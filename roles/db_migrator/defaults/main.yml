@@ -1,0 +1,6 @@
+# defaults file for db_migrator
+nexus_db_migrator_version: 3.74.0-01
+nexus_db_migrator_download_url: https://download.sonatype.com/nexus/nxrm3-migrator
+nexus_data_dir: /nexus-data
+nexus_os_user: nexus
+nexus_os_group: nexus

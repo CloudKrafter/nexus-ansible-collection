@@ -1,0 +1,10 @@
+---
+
+- name: Download the Nexus database migration tool
+  get_url:
+    url: "{{ nexus_db_migrator_download_url }}/nexus-db-migrator-{{ nexus_db_migrator_version }}.jar"
+    dest: "{{ nexus_data_dir }}/db/nexus-db-migrator-{{ nexus_db_migrator_version }}.jar"
+    mode: "0644"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+  tags: nexus-migrate, nexus-healthcheck

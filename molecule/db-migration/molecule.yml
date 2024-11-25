@@ -1,0 +1,74 @@
+---
+dependency:
+  name: galaxy
+  enabled: true
+  options:
+    collections-file: ../ansible-requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: nexus-db-migration
+    hostname: nexus3-oss
+    image: sonatype/nexus3
+    pull: true
+    pre_build_image: true
+    privileged: true
+    override_command: false
+    published_ports:
+      - 7081:8081
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    groups:
+      - nexus
+    networks: &nexus_networks
+      - name: bridge
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      remote_tmp: /tmp
+  options:
+    vvv: True
+  collections:
+    - community.general
+    - community.docker
+  playbooks:
+    prepare: prepare.yml
+    converge: converge.yml
+  inventory:
+    links:
+      group_vars: group_vars/
+
+scenario:
+  create_sequence:
+    - create
+    - prepare
+  check_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - check
+    - destroy
+  converge_sequence:
+    - create
+    - prepare
+    - converge
+  test_sequence:
+    - destroy
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - check
+    - verify
+    - destroy
+
+verifier:
+  name: ansible
+
+role_name_check: 2

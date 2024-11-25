@@ -1,0 +1,25 @@
+---
+- name: Prepare Nexus3
+  hosts: localhost
+  gather_facts: false
+  tasks:
+
+    - name: Gather facts about the nexus-db-migration container
+      community.docker.docker_container_info:
+        name: nexus-db-migration
+      register: nexus_db_migration_info
+
+    - name: Set nexus3_ip variable
+      ansible.builtin.set_fact:
+        nexus3_ip: "{{ nexus_db_migration_info.container.NetworkSettings.Networks.bridge.IPAddress }}"
+
+    - name: Wait for Nexus writable API endpoint to be available
+      ansible.builtin.uri:
+        url: "http://{{ nexus3_ip }}:8081/service/rest/v1/status/writable"
+        method: GET
+        validate_certs: false
+        status_code: 200
+      register: __nexus_writable__
+      until: __nexus_writable__.status == 200
+      retries: 30
+      delay: 10

@@ -1,10 +1,11 @@
 ---
 - name: Converge
-  hosts: localhost
+  hosts: all
   gather_facts: true
+  vars:
+    remote_tmp: /tmp
   collections:
     - cloudkrafter.nexus
 
   roles:
-    - role: cloudkrafter.nexus.config_api
     - role: cloudkrafter.nexus.db_migrator
