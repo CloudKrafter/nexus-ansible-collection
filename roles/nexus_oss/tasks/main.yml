@@ -359,13 +359,10 @@
         - users
         - ldap
 
-- name: Configure anonymous access
-  ansible.builtin.include_tasks: call_script.yml
-  vars:
-    script_name: setup_anonymous_access
-    call_args:
-      anonymous_access: "{{ nexus_anonymous_access }}"
-  when: nexus_anonymous_access is boolean
+- name: Import Anonymous Access tasks from config_api
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: security-anonymous-api.yml
 
 - name: Configure base url
   ansible.builtin.include_tasks: call_script.yml
