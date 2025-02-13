@@ -371,16 +371,10 @@
     call_args:
       base_url: "{{ nexus_public_scheme }}://{{ nexus_public_hostname }}/"
 
-- name: Configure realms
-  ansible.builtin.include_tasks: call_script.yml
-  vars:
-    script_name: setup_realms
-    call_args:
-      nuget_api_key_realm: "{{ nexus_nuget_api_key_realm }}"
-      npm_bearer_token_realm: "{{ nexus_npm_bearer_token_realm }}"
-      rut_auth_realm: "{{ nexus_rut_auth_realm }}"
-      ldap_realm: "{{ nexus_ldap_realm }}"
-      docker_bearer_token_realm: "{{ nexus_docker_bearer_token_realm }}"
+- name: Import Realm tasks from config_api
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: security-realms-api.yml
 
 - name: Configure RUT Auth header
   ansible.builtin.include_tasks: call_script.yml
