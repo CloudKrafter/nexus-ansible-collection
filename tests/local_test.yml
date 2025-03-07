@@ -1,0 +1,21 @@
+---
+- hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Download Latest Nexus
+      download:
+        state: latest
+        dest: /tmp
+
+    - name: Download Specific Nexus Version
+      download:
+        state: present
+        version: 3.77.2-02
+        dest: /tmp
+
+    - name: Download Specific Nexus Architecture
+      download:
+        state: present
+        version: 3.78.0-14
+        dest: /tmp
+        arch: aarch64

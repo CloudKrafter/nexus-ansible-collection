@@ -99,30 +99,15 @@
   ansible.builtin.debug:
     msg: "{{ version_info.split('\n') }}"
 
-- name: Register nexus package name
-  ansible.builtin.set_fact:
-    nexus_package: >-
-      {{
-        'nexus-' + nexus_version
-        + '-java' + nexus_java_version | string
-        + '-unix.tar.gz'
-        if nexus_version is version_compare('3.67.1-01', '>=') and nexus_version is version_compare('3.70.1-02', '<=')
-        else 'nexus-' + nexus_version + '-unix.tar.gz'
-      }}
-
-- name: Download nexus_package
-  ansible.builtin.get_url:
-    url: "{{ nexus_download_url }}/{{ nexus_package }}"
-    dest: "{{ nexus_download_dir }}/{{ nexus_package }}"
-    force: false
+- name: Download Nexus package
+  cloudkrafter.nexus.download:
+    state: "{{ 'present' if nexus_version | length > 0 else 'latest' }}"
+    version: "{{ nexus_version }}"
+    dest: "{{ nexus_download_dir }}"
     validate_certs: "{{ nexus_download_ssl_verify | default(omit) }}"
-    owner: root
-    group: root
-    mode: "0644"
-  check_mode: false
-  register: download_status
+  register: __nexus_download__
   until: >
-    (download_status.status_code == 200) or (download_status.status_code == 304)
+    (__nexus_download__.status_code == 200) or (__nexus_download__.status_code == 304)
   retries: "{{ nexus_download_retries }}"
   delay: "{{ nexus_download_delay }}"
   notify:
@@ -151,7 +136,7 @@
 
 - name: Unpack Nexus download
   ansible.builtin.unarchive:
-    src: "{{ nexus_download_dir }}/{{ nexus_package }}"
+    src: "{{ __nexus_download__.dest }}"
     dest: "{{ nexus_installation_dir }}"
     creates: "{{ nexus_installation_dir }}/nexus-{{ nexus_version }}"
     copy: false
