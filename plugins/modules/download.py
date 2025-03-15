@@ -156,16 +156,34 @@ except ImportError:
             pass
 
 
-def get_latest_version(validate_certs=True):
-    """
-    Scrapes the Sonatype download page to find the latest version.
+def get_proxy_settings(module=None):
+    """Get proxy settings from environment."""
+    proxies = {}
+    
+    # Try standard environment variables
+    env_map = {
+        'http': ['http_proxy', 'HTTP_PROXY'],
+        'https': ['https_proxy', 'HTTPS_PROXY'],
+        'no_proxy': ['no_proxy', 'NO_PROXY']
+    }
 
-    Args:
-        validate_certs (bool): Whether to verify SSL certificates
-    """
+    for proxy_type, env_vars in env_map.items():
+        for env_var in env_vars:
+            if os.environ.get(env_var):
+                proxies[proxy_type] = os.environ[env_var]
+                break
+
+    return proxies
+
+
+def get_latest_version(validate_certs=True):
+    """Scrapes the Sonatype download page to find the latest version."""
     url = "https://help.sonatype.com/en/download-archives---repository-manager-3.html"
     try:
-        soup = scrape_download_page(url, validate_certs)
+        proxies = get_proxy_settings()
+        response = requests.get(url, verify=validate_certs, proxies=proxies)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
 
         # Look for version pattern in text (e.g., "3.78.0-01")
         version_pattern = r'(\d+\.\d+\.\d+-\d+)'
@@ -196,7 +214,7 @@ def is_valid_version(version):
     return bool(re.match(pattern, version))
 
 
-def scrape_download_page(url, validate_certs=True):
+def scrape_download_page(module, url, validate_certs=True):
     """
     Scrapes the Sonatype download page and returns the parsed content.
 
@@ -211,7 +229,15 @@ def scrape_download_page(url, validate_certs=True):
         Exception: If page fetch fails
     """
     try:
-        response = requests.get(url, verify=validate_certs)
+        env = module.get_ansible_env()
+        proxies = {
+            'http': env.get('http_proxy'),
+            'https': env.get('https_proxy')
+        }
+        # Remove None values
+        proxies = {k: v for k, v in proxies.items() if v is not None}
+
+        response = requests.get(url, verify=validate_certs, proxies=proxies)
         response.raise_for_status()
         return BeautifulSoup(response.text, 'html.parser')
     except requests.exceptions.RequestException as e:
@@ -230,7 +256,8 @@ def validate_download_url(url, validate_certs=True):
         tuple: (bool, int) - (is_valid, status_code)
     """
     try:
-        response = requests.head(url, verify=validate_certs, allow_redirects=True)
+        proxies = get_proxy_settings()
+        response = requests.head(url, verify=validate_certs, allow_redirects=True, proxies=proxies)
         return response.ok, response.status_code
     except requests.exceptions.RequestException:
         return False, None

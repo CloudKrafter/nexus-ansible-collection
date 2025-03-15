@@ -279,8 +279,12 @@ def test_get_valid_download_urls(mock_validate):
 
 @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.requests')
 @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.BeautifulSoup')
-def test_scrape_download_page(mock_bs4, mock_requests):
-    """Test scraping of download page"""
+def test_scrape_download_page_without_proxy(mock_bs4, mock_requests):
+    """Test scraping of download page without proxy settings"""
+    # Create mock module with empty environment
+    mock_module = MagicMock()
+    mock_module.get_ansible_env.return_value = {}
+
     # Setup mock response for successful case
     mock_response = MagicMock()
     mock_response.text = '<html><body>Test content</body></html>'
@@ -293,10 +297,14 @@ def test_scrape_download_page(mock_bs4, mock_requests):
 
     # Test successful scraping
     url = "https://test.com"
-    result = scrape_download_page(url, validate_certs=True)
-
+    result = scrape_download_page(module=mock_module, url=url, validate_certs=True)
+    
     assert result == mock_soup
-    mock_requests.get.assert_called_once_with(url, verify=True)
+    mock_requests.get.assert_called_once_with(
+        url,
+        verify=True,
+        proxies={}  # Empty proxies since we're using mock module with empty environment
+    )
     mock_bs4.assert_called_once_with(mock_response.text, 'html.parser')
 
     # Test request failure
@@ -306,48 +314,67 @@ def test_scrape_download_page(mock_bs4, mock_requests):
     mock_requests.get.side_effect = mock_requests.exceptions.RequestException("Connection error")
 
     with pytest.raises(Exception) as exc_info:
-        scrape_download_page(url, validate_certs=False)
+        scrape_download_page(module=mock_module, url=url, validate_certs=False)
 
     assert "Failed to fetch download page" in str(exc_info.value)
-    mock_requests.get.assert_called_once_with(url, verify=False)
+    mock_requests.get.assert_called_once_with(
+        url,
+        verify=False,
+        proxies={}
+    )
 
 
-# @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.get_latest_version')
-# @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.get_valid_download_urls')
-# def test_get_download_url(mock_get_valid_urls, mock_get_latest):
-#     """Test URL selection based on state and version"""
-#     base_url = 'https://download.sonatype.com/nexus/3/'
-#     version = '3.78.0-01'
+@patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.requests')
+@patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.BeautifulSoup')
+def test_scrape_download_page_with_proxy(mock_bs4, mock_requests):
+    """Test scraping of download page with proxy settings"""
+    # Create mock module with empty environment
+    mock_module = MagicMock()
+    mock_module.get_ansible_env.return_value = {
+        'http_proxy': 'http://proxy:8080',
+        'https_proxy': 'https://proxy:8443'
+    }
 
-#     # Test latest version with single URL
-#     mock_get_latest.return_value = version
-#     mock_get_valid_urls.return_value = [f'{base_url}nexus-{version}-unix.tar.gz']
+    # Setup mock response for successful case
+    mock_response = MagicMock()
+    mock_response.text = '<html><body>Test content</body></html>'
+    mock_response.raise_for_status.return_value = None
+    mock_requests.get.return_value = mock_response
 
-#     result = get_download_url(state='latest', validate_certs=True)
-#     assert result == f'{base_url}nexus-{version}-unix.tar.gz'
-#     mock_get_latest.assert_called_once_with(validate_certs=True)
+    # Setup BeautifulSoup mock
+    mock_soup = MagicMock()
+    mock_bs4.return_value = mock_soup
 
-#     # Reset mocks
-#     mock_get_latest.reset_mock()
-#     mock_get_valid_urls.reset_mock()
+    # Test successful scraping
+    url = "https://test.com"
+    result = scrape_download_page(module=mock_module, url=url, validate_certs=True)
+    
+    assert result == mock_soup
+    mock_requests.get.assert_called_once_with(
+        url,
+        verify=True,
+        proxies={
+            'http': 'http://proxy:8080',
+            'https': 'https://proxy:8443'
+        }
+    )
+    mock_bs4.assert_called_once_with(mock_response.text, 'html.parser')
 
-#     # Test present state with multiple URLs
-#     urls = [
-#         f'{base_url}nexus-unix-{version}.tar.gz',
-#         f'{base_url}nexus-{version}-unix.tar.gz'
-#     ]
-#     mock_get_valid_urls.return_value = urls
+    # Test request failure
+    mock_requests.get.reset_mock()
+    mock_requests.exceptions = MagicMock()
+    mock_requests.exceptions.RequestException = Exception
+    mock_requests.get.side_effect = mock_requests.exceptions.RequestException("Connection error")
 
-#     with pytest.raises(ValueError, match="Multiple valid URLs found"):
-#         get_download_url(state='present', version=version)
+    with pytest.raises(Exception) as exc_info:
+        scrape_download_page(module=mock_module, url=url, validate_certs=False)
 
-#     # Reset mocks
-#     mock_get_valid_urls.reset_mock()
-
-#     # Test invalid state
-#     with pytest.raises(ValueError, match="Invalid state"):
-#         get_download_url(state='invalid')
-
-#     # Test missing version in present state
-#     with pytest.raises(ValueError, match="Version must be provided"):
-#         get_download_url(state='present')
+    assert "Failed to fetch download page" in str(exc_info.value)
+    mock_requests.get.assert_called_once_with(
+        url,
+        verify=False,
+        proxies={
+            'http': 'http://proxy:8080',
+            'https': 'https://proxy:8443'
+        }
+    )
