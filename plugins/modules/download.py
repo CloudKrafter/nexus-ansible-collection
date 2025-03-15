@@ -165,9 +165,7 @@ def get_latest_version(validate_certs=True):
     """
     url = "https://help.sonatype.com/en/download-archives---repository-manager-3.html"
     try:
-        response = requests.get(url, verify=validate_certs)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = scrape_download_page(url, validate_certs)
 
         # Look for version pattern in text (e.g., "3.78.0-01")
         version_pattern = r'(\d+\.\d+\.\d+-\d+)'
