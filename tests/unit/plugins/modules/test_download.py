@@ -258,8 +258,12 @@ def test_get_possible_package_names(version, arch, java_version, expected):
 
 
 @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.requests')
-def test_validate_download_url(mock_requests):
+def test_validate_download_url_without_proxy(mock_requests):
     """Test URL validation using HEAD requests"""
+    # Create mock module with empty environment
+    mock_module = MagicMock()
+    mock_module.get_ansible_env.return_value = {}
+
     # Setup mock responses
     mock_response_valid = MagicMock()
     mock_response_valid.ok = True
@@ -271,23 +275,133 @@ def test_validate_download_url(mock_requests):
 
     # Test valid URL
     mock_requests.head.return_value = mock_response_valid
-    is_valid, status_code = validate_download_url("https://download.sonatype.com/nexus/3/test.tar.gz")
+    is_valid, status_code = validate_download_url(
+        module=mock_module,
+        url="https://download.sonatype.com/nexus/3/test.tar.gz",
+        validate_certs=True
+    )
     assert is_valid is True
     assert status_code == 200
+    mock_requests.head.assert_called_with(
+        "https://download.sonatype.com/nexus/3/test.tar.gz",
+        verify=True,
+        allow_redirects=True,
+        proxies={}
+    )
 
     # Test invalid URL
+    mock_requests.head.reset_mock()
     mock_requests.head.return_value = mock_response_invalid
-    is_valid, status_code = validate_download_url("https://download.sonatype.com/nexus/3/nonexistent.tar.gz")
+    is_valid, status_code = validate_download_url(
+        module=mock_module,
+        url="https://download.sonatype.com/nexus/3/nonexistent.tar.gz",
+        validate_certs=True
+    )
     assert is_valid is False
     assert status_code == 404
+    mock_requests.head.assert_called_with(
+        "https://download.sonatype.com/nexus/3/nonexistent.tar.gz",
+        verify=True,
+        allow_redirects=True,
+        proxies={}
+    )
 
     # Test connection error
+    mock_requests.head.reset_mock()
     mock_requests.exceptions = MagicMock()
     mock_requests.exceptions.RequestException = Exception
     mock_requests.head.side_effect = mock_requests.exceptions.RequestException
-    is_valid, status_code = validate_download_url("https://invalid.url")
+    is_valid, status_code = validate_download_url(
+        module=mock_module,
+        url="https://invalid.url",
+        validate_certs=True
+    )
     assert is_valid is False
     assert status_code is None
+    mock_requests.head.assert_called_with(
+        "https://invalid.url",
+        verify=True,
+        allow_redirects=True,
+        proxies={}
+    )
+
+
+@patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.requests')
+def test_validate_download_url_with_proxy(mock_requests):
+    """Test URL validation using HEAD requests with proxy settings"""
+    # Create mock module with empty environment
+    mock_module = MagicMock()
+    mock_module.get_ansible_env.return_value = {
+        'http_proxy': 'http://proxy:8080',
+        'https_proxy': 'https://proxy:8443'
+    }
+
+    # Setup mock responses
+    mock_response_valid = MagicMock()
+    mock_response_valid.ok = True
+    mock_response_valid.status_code = 200
+
+    mock_response_invalid = MagicMock()
+    mock_response_invalid.ok = False
+    mock_response_invalid.status_code = 404
+
+    # Test valid URL
+    mock_requests.head.return_value = mock_response_valid
+    is_valid, status_code = validate_download_url(
+        module=mock_module,
+        url="https://download.sonatype.com/nexus/3/test.tar.gz"
+    )
+    assert is_valid is True
+    assert status_code == 200
+    mock_requests.head.assert_called_with(
+        "https://download.sonatype.com/nexus/3/test.tar.gz",
+        verify=True,
+        allow_redirects=True,
+        proxies={
+            'http': 'http://proxy:8080',
+            'https': 'https://proxy:8443'
+        }
+    )
+
+    # Test invalid URL
+    mock_requests.head.reset_mock()
+    mock_requests.head.return_value = mock_response_invalid
+    is_valid, status_code = validate_download_url(
+        module=mock_module,
+        url="https://download.sonatype.com/nexus/3/nonexistent.tar.gz"
+    )
+    assert is_valid is False
+    assert status_code == 404
+    mock_requests.head.assert_called_with(
+        "https://download.sonatype.com/nexus/3/nonexistent.tar.gz",
+        verify=True,
+        allow_redirects=True,
+        proxies={
+            'http': 'http://proxy:8080',
+            'https': 'https://proxy:8443'
+        }
+    )
+
+    # Test connection error
+    mock_requests.head.reset_mock()
+    mock_requests.exceptions = MagicMock()
+    mock_requests.exceptions.RequestException = Exception
+    mock_requests.head.side_effect = mock_requests.exceptions.RequestException
+    is_valid, status_code = validate_download_url(
+        module=mock_module,
+        url="https://invalid.url"
+    )
+    assert is_valid is False
+    assert status_code is None
+    mock_requests.head.assert_called_with(
+        "https://invalid.url",
+        verify=True,
+        allow_redirects=True,
+        proxies={
+            'http': 'http://proxy:8080',
+            'https': 'https://proxy:8443'
+        }
+    )
 
 
 @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.validate_download_url')

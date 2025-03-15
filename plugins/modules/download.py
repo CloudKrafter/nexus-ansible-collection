@@ -251,7 +251,7 @@ def scrape_download_page(module, url, validate_certs=True):
         raise Exception(f"Failed to fetch download page: {str(e)}")
 
 
-def validate_download_url(url, validate_certs=True):
+def validate_download_url(module, url, validate_certs=True):
     """
     Validates if a URL exists by checking HTTP headers.
 
@@ -263,7 +263,14 @@ def validate_download_url(url, validate_certs=True):
         tuple: (bool, int) - (is_valid, status_code)
     """
     try:
-        proxies = get_proxy_settings()
+        env = module.get_ansible_env()
+        proxies = {
+            'http': env.get('http_proxy'),
+            'https': env.get('https_proxy')
+        }
+        # Remove None values
+        proxies = {k: v for k, v in proxies.items() if v is not None}
+
         response = requests.head(url, verify=validate_certs, allow_redirects=True, proxies=proxies)
         return response.ok, response.status_code
     except requests.exceptions.RequestException:
@@ -505,8 +512,7 @@ def main():
     except Exception as e:
         module.fail_json(
             msg=f"Error determining download URL: {str(e)}",
-            download_url=url if url else None,
-            version=actual_version
+            download_url=url if url else None
         )
 
     # Get destination path
