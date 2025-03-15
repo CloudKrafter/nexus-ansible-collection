@@ -115,7 +115,11 @@ class TestNexusDownloadModule:
     @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.requests')
     @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.BeautifulSoup')
     @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.version')
-    def test_get_latest_version(self, mock_version, mock_bs4, mock_requests):
+    def test_get_latest_version_without_proxy(self, mock_version, mock_bs4, mock_requests):
+        # Create mock module with empty environment
+        mock_module = MagicMock()
+        mock_module.get_ansible_env.return_value = {}
+
         # Setup mock response
         mock_response = MagicMock()
         mock_response.text = self.mock_html
@@ -133,11 +137,52 @@ class TestNexusDownloadModule:
         # Setup version parsing mock
         mock_version.parse = mock_parse
 
-        result = get_latest_version(validate_certs=True)
+        result = get_latest_version(module=mock_module, validate_certs=True)
         assert result == '3.78.0-01'
         mock_requests.get.assert_called_once_with(
             "https://help.sonatype.com/en/download-archives---repository-manager-3.html",
-            verify=True
+            verify=True,
+            proxies={} # Empty proxies since we're using mock module with empty environment
+        )
+
+
+    @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.requests')
+    @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.BeautifulSoup')
+    @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.version')
+    def test_get_latest_version_with_proxy(self, mock_version, mock_bs4, mock_requests):
+        # Create mock module with empty environment
+        mock_module = MagicMock()
+        mock_module.get_ansible_env.return_value = {
+            'http_proxy': 'http://proxy:8080',
+            'https_proxy': 'https://proxy:8443'
+        }
+
+        # Setup mock response
+        mock_response = MagicMock()
+        mock_response.text = self.mock_html
+        mock_response.raise_for_status.return_value = None
+        mock_requests.get.return_value = mock_response
+
+        # Setup BeautifulSoup mock
+        mock_soup = MagicMock()
+        mock_bs4.return_value = mock_soup
+        mock_soup.stripped_strings = [
+            'Release Notes for 3.78.0-01',
+            'Release Notes for 3.77.0-01'
+        ]
+
+        # Setup version parsing mock
+        mock_version.parse = mock_parse
+
+        result = get_latest_version(module=mock_module, validate_certs=True)
+        assert result == '3.78.0-01'
+        mock_requests.get.assert_called_once_with(
+            "https://help.sonatype.com/en/download-archives---repository-manager-3.html",
+            verify=True,
+            proxies={
+                'http': 'http://proxy:8080',
+                'https': 'https://proxy:8443'
+            }
         )
 
     # @patch('ansible.module_utils.basic.AnsibleModule')
@@ -298,7 +343,7 @@ def test_scrape_download_page_without_proxy(mock_bs4, mock_requests):
     # Test successful scraping
     url = "https://test.com"
     result = scrape_download_page(module=mock_module, url=url, validate_certs=True)
-    
+
     assert result == mock_soup
     mock_requests.get.assert_called_once_with(
         url,
@@ -348,7 +393,7 @@ def test_scrape_download_page_with_proxy(mock_bs4, mock_requests):
     # Test successful scraping
     url = "https://test.com"
     result = scrape_download_page(module=mock_module, url=url, validate_certs=True)
-    
+
     assert result == mock_soup
     mock_requests.get.assert_called_once_with(
         url,

@@ -159,7 +159,7 @@ except ImportError:
 def get_proxy_settings(module=None):
     """Get proxy settings from environment."""
     proxies = {}
-    
+
     # Try standard environment variables
     env_map = {
         'http': ['http_proxy', 'HTTP_PROXY'],
@@ -176,11 +176,18 @@ def get_proxy_settings(module=None):
     return proxies
 
 
-def get_latest_version(validate_certs=True):
+def get_latest_version(module, validate_certs=True):
     """Scrapes the Sonatype download page to find the latest version."""
     url = "https://help.sonatype.com/en/download-archives---repository-manager-3.html"
     try:
-        proxies = get_proxy_settings()
+        env = module.get_ansible_env()
+        proxies = {
+            'http': env.get('http_proxy'),
+            'https': env.get('https_proxy')
+        }
+        # Remove None values
+        proxies = {k: v for k, v in proxies.items() if v is not None}
+
         response = requests.get(url, verify=validate_certs, proxies=proxies)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
