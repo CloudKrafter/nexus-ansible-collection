@@ -299,6 +299,35 @@ def test_download_file(mock_fetch, mock_os, tmp_path):
         download_file(module, url, dest)
     assert "Download failed" in str(exc.value)
 
+    # Reset mocks for write failure test
+    mock_os.reset_mock()
+    mock_fetch.reset_mock()
+    mock_os.path.exists.side_effect = [False, False]  # File and dir don't exist
+    mock_response = MagicMock()
+    mock_response.read.return_value = b"test content"
+    mock_fetch.return_value = (mock_response, {'status': 200})
+
+    # Reset module mock for write failure test
+    module = MagicMock()
+    module.params = {'timeout': 30}
+    module.fail_json = MagicMock()
+
+    # Mock open to raise an IOError when writing
+    mock_open = MagicMock()
+    mock_open.side_effect = IOError("Permission denied")
+
+    with patch('builtins.open', mock_open):
+        # Test file write failure
+        try:
+            download_file(module, url, dest)
+        except Exception:
+            pass  # We expect fail_json to be called, not an exception to be raised
+
+        # Verify fail_json was called with correct message
+        module.fail_json.assert_called_once_with(
+            msg="Failed to write file: Permission denied"
+        )
+
 
 def test_get_dest_path():
     """Test destination path generation"""
