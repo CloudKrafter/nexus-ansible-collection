@@ -19,16 +19,22 @@ from ansible_collections.cloudkrafter.nexus.plugins.modules.download import (
 
 
 @pytest.mark.parametrize('version,expected', [
-    ('3.78.0-01', True),
-    ('3.78.1-02', True),
-    ('3.0.0-01', True),
-    ('3.78.0', False),
-    ('3.78-01', False),
-    ('3.78.0.1-01', False),
-    ('3.78.0-1', True),
-    ('invalid', False),
-    ('', False),
-    (None, False),
+    ('3.78.0-01', True),        # Valid version
+    ('3.78.1-02', True),        # Valid version
+    ('3.0.0-01', True),         # Valid version
+    ('3.78.0', False),          # Missing build number
+    ('3.78-01', False),         # Missing minor version
+    ('3.78.0.1-01', False),     # Extra version number
+    ('3.78.0-1', True),         # Single digit build number
+    ('invalid', False),         # Invalid version
+    ('', False),                # Empty string
+    (None, False),              # None value
+    (123, False),               # Integer
+    (3.78, False),              # Float
+    ([], False),                # List
+    ({}, False),                # Dictionary
+    (True, False),              # Boolean
+    (b'3.78.0-01', False),      # Bytes
 ])
 def test_is_valid_version(version, expected):
     """Test version string validation"""
