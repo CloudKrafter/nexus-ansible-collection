@@ -69,6 +69,11 @@ class TestNexusDownloadModule:
     @patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.open_url')
     def test_get_latest_version(self, mock_open_url):
         """Test getting latest version from GitHub API"""
+
+        #################################
+        # Test case for succesful response
+        #################################
+
         # Setup mock response
         mock_response = MagicMock()
         mock_response.code = 200
@@ -83,6 +88,72 @@ class TestNexusDownloadModule:
             validate_certs=True,
             headers={'Accept': 'application/json'}
         )
+
+        #################################
+        # Test case for empty release name
+        #################################
+
+        # Reset mock for empty response test
+        mock_open_url.reset_mock()
+        mock_empty_response = MagicMock()
+        mock_empty_response.code = 200
+        mock_empty_response.read.return_value = b'{"name": ""}'  # Empty name
+        mock_open_url.return_value = mock_empty_response
+
+        # Test empty release name
+        with pytest.raises(Exception, match="Failed to fetch version from API: No release found in API response"):
+            get_latest_version(validate_certs=True)
+
+        # Reset mock for missing name field test
+        mock_open_url.reset_mock()
+        mock_missing_name_response = MagicMock()
+        mock_missing_name_response.code = 200
+        mock_missing_name_response.read.return_value = b'{}'  # Missing name field
+        mock_open_url.return_value = mock_missing_name_response
+
+        # Test missing name field
+        with pytest.raises(Exception, match="Failed to fetch version from API: No release found in API response"):
+            get_latest_version(validate_certs=True)
+
+        #################################
+        # Test case for invalid version in response
+        #################################
+
+        # Reset mock for invalid version format test
+        mock_open_url.reset_mock()
+        mock_invalid_version_response = MagicMock()
+        mock_invalid_version_response.code = 200
+        mock_invalid_version_response.read.return_value = b'{"name": "release-invalid"}'  # Invalid version format
+        mock_open_url.return_value = mock_invalid_version_response
+
+        # Test invalid version format
+        with pytest.raises(Exception, match="Failed to fetch version from API: Invalid version format: invalid"):
+            get_latest_version(validate_certs=True)
+
+        # Reset mock for non-release version format test
+        mock_open_url.reset_mock()
+        mock_non_release_response = MagicMock()
+        mock_non_release_response.code = 200
+        mock_non_release_response.read.return_value = b'{"name": "non-release-3.78.0-01"}'  # Wrong prefix
+        mock_open_url.return_value = mock_non_release_response
+
+        # Test non-release version format
+        with pytest.raises(Exception, match="Failed to fetch version from API: Invalid version format: non-release-3.78.0-01"):
+            get_latest_version(validate_certs=True)
+
+        #################################
+        # Test case for API non-200 status code
+        #################################
+
+        # Reset mock for API error test (non-200 status code)
+        mock_open_url.reset_mock()
+        mock_error_response = MagicMock()
+        mock_error_response.code = 403
+        mock_open_url.return_value = mock_error_response
+
+        # Test API error with non-200 status code
+        with pytest.raises(Exception, match="Failed to fetch version from API: API request failed with status code: 403"):
+            get_latest_version(validate_certs=True)
 
         # Reset mock for error test
         mock_open_url.reset_mock()
