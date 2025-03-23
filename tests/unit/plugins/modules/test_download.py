@@ -318,10 +318,7 @@ def test_download_file(mock_fetch, mock_os, tmp_path):
 
     with patch('builtins.open', mock_open):
         # Test file write failure
-        try:
-            download_file(module, url, dest)
-        except Exception:
-            pass  # We expect fail_json to be called, not an exception to be raised
+        download_file(module, url, dest)
 
         # Verify fail_json was called with correct message
         module.fail_json.assert_called_once_with(
