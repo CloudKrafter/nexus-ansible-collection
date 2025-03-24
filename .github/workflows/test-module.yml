@@ -35,7 +35,7 @@ jobs:
       - name: Run Sanity Tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test sanity plugins/modules/download.py tests/
+          ansible-test sanity plugins/modules/ tests/
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
@@ -53,19 +53,27 @@ jobs:
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
           ansible-test coverage xml
 
+      - name: Copy test output files
+        run: |
+          mkdir -p /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
+          cp -r /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus/tests/output/* /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
+          mv /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/junit/python3.10-modules-units.xml /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/junit/python3.10-modules.junit.xml
+
       - uses: actions/upload-artifact@v4
         with:
           name: test-results
           path: |
-            ~/.ansible/collections/ansible_collections/cloudkrafter/nexus/tests/output
+            /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
         uses: codecov/test-results-action@v1
         with:
           fail_ci_if_error: true
-          #directory: /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus/tests/output/junit
-          files: ./tests/output/junit/*.xml
+          directory: /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/junit/
+          files: python3.10-modules.junit.xml
+          flags: python3.10
+          #disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
 
@@ -74,8 +82,10 @@ jobs:
         uses: codecov/test-results-action@v1
         with:
           fail_ci_if_error: true
-          #directory: /root/ansible_collections/cloudkrafter/nexus/tests/output/junit
-          files: ./tests/output/junit/*.xml
+          directory: /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/junit/
+          files: python3.10-modules.junit.xml
+          flags: python3.10
+          #disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
           verbose: true
 
@@ -83,8 +93,8 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: true
-          directory: /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus/tests/output/
-          files: ./reports/coverage.xml
+          directory: /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
+          files: reports/coverage.xml
           slug: CloudKrafter/nexus-ansible-collection
           flags: unittests
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -92,7 +102,7 @@ jobs:
       - name: Run Download Module for latest
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=latest dest=/tmp/nexus.tar.gz' localhost
+          ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=latest dest=/tmp/nexus.tar.gz' localhost --check
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
@@ -100,7 +110,7 @@ jobs:
       - name: Run Download Module for specific version
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=present version=3.77.1-01 dest=/tmp/nexus.tar.gz' localhost
+          ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=present version=3.77.1-01 dest=/tmp/nexus.tar.gz' localhost --check
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'

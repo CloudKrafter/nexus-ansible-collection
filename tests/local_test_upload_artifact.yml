@@ -1,0 +1,29 @@
+---
+- name: Playbook Test
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Download Latest Nexus from Sonatype Download Archive
+      download:
+        state: latest
+        dest: /tmp
+      register: download_latest_nexus
+    
+    - name: debug
+      debug:
+        var: download_latest_nexus
+
+    - name: Upload artifact
+      upload_artifact:
+        src: download_latest_nexus.destination
+        dest: /nexus
+        name: nexus-latest.tar.gz
+        repository: https://localhost:9091/repository/raw-hosted
+        username: admin
+        password: changeme
+        validate_certs: false
+      register: upload_artifact
+    
+    - name: debug
+      debug:
+        var: upload_artifact
