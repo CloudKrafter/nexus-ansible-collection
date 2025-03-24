@@ -89,8 +89,8 @@
       ansible.builtin.include_role:
         name: cloudkrafter.nexus.config_api
         tasks_from: ssl-truststore-api.yml
-      tags: privileges
-      when: nexus_privileges | length > 0
+      tags: ssl-truststore
+      when: nexus_ssl_truststore | length > 0
 
     - name: Create/check ldap servers
       ansible.builtin.include_tasks: setup_ldap_each.yml
