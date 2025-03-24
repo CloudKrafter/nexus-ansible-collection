@@ -146,6 +146,12 @@ nexus_repos_maven_group: []
 
 nexus_repos_composer_proxy: []
 
+nexus_repos_nuget_hosted: []
+
+nexus_repos_nuget_proxy: []
+
+nexus_repos_nuget_group: []
+
 nexus_repos_routing_rules: []
 
 # Default user password used when creating new users. This is only used if the user does not already exist.

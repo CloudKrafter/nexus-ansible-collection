@@ -85,6 +85,13 @@
     - provision
     - blobstores
   block:
+    - name: Create/check SSL truststores
+      ansible.builtin.include_role:
+        name: cloudkrafter.nexus.config_api
+        tasks_from: ssl-truststores.yml
+      tags: privileges
+      when: nexus_privileges | length > 0
+
     - name: Create/check ldap servers
       ansible.builtin.include_tasks: setup_ldap_each.yml
       with_items: "{{ ldap_connections }}"
@@ -121,7 +128,7 @@
             force_basic_auth: true
             validate_certs: "{{ nexus_api_validate_certs }}"
             body_format: json
-            return_content: yes
+            return_content: true
             status_code: 200
           register: __nexus_existing_blobstores__
           tags: blobstores
@@ -186,12 +193,12 @@
         force_basic_auth: true
         validate_certs: "{{ nexus_api_validate_certs }}"
         body_format: json
-        return_content: yes
+        return_content: true
         status_code: 200
       register: __nexus_existing_cleanup_policies__
       when: nexus_enable_pro_version | default(false) | bool and not cleanup_in_groovy_format | bool
       tags: cleanup
-    
+
     - name: Create configured cleanup policies using Nexus API
       ansible.builtin.include_tasks: create_cleanup_policies.yml
       vars:
@@ -200,7 +207,7 @@
         - "{{ nexus_repos_cleanup_policies | d([]) }}"
       when: not cleanup_in_groovy_format | bool and nexus_repos_cleanup_policies | length > 0 and nexus_enable_pro_version
       tags: cleanup
-    
+
     - name: Get all existing routing rules
       ansible.builtin.uri:
         url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/routing-rules"
@@ -210,7 +217,7 @@
         force_basic_auth: true
         validate_certs: "{{ nexus_api_validate_certs }}"
         body_format: json
-        return_content: yes
+        return_content: true
         status_code: 200
       register: __nexus_existing_routing_rules__
       tags: routing-rules
@@ -246,7 +253,7 @@
         force_basic_auth: true
         validate_certs: "{{ nexus_api_validate_certs }}"
         body_format: json
-        return_content: yes
+        return_content: true
         status_code: 200
       register: __nexus_existing_repos__
       tags: repos
@@ -299,7 +306,7 @@
         - "{{ _nexus_repos_composer_proxy | d([]) }}"
       when: nexus_use_api_for_provisioning | default(false) | bool
       tags: repos
-    
+
     # This is temporarily because BearerToken for NPM proxies can not be set using the API
     - name: Create configured NPM Proxy repositories
       ansible.builtin.include_tasks: call_script.yml
@@ -307,7 +314,7 @@
         script_name: create_repos_from_list
         call_args: "{{ _nexus_repos_npm_proxy | d([]) }}"
       tags: repos
-    
+
     # This is temporarily because when creating NPM group repos, thers a possibility it contains NPM proxies.
     # Therefor we only create NPM group repos after hosted and proxy repos have been created.
     - name: Create configured NPM group repositories using Nexus API
