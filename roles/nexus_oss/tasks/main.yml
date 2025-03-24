@@ -88,7 +88,7 @@
     - name: Create/check SSL truststores
       ansible.builtin.include_role:
         name: cloudkrafter.nexus.config_api
-        tasks_from: ssl-truststores.yml
+        tasks_from: ssl-truststore-api.yml
       tags: privileges
       when: nexus_privileges | length > 0
 
