@@ -536,15 +536,15 @@ class TestUploadArtifactModule:
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.AnsibleModule', return_value=mock_module), \
              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.get_repository_details') as mock_repo_details:
 
-             mock_repo_details.side_effect = Exception("Unexpected error occurred")
+            mock_repo_details.side_effect = Exception("Unexpected error occurred")
 
-             main()
+            main()
 
-             mock_module.fail_json.assert_called_once()
-             call_args = mock_module.fail_json.call_args[1]
-             assert call_args['msg'] == "An unexpected error occurred: Unexpected error occurred"
-             assert call_args['error']['type'] == 'unexpected'
-             assert call_args['error']['details'] == "Unexpected error occurred"
+            mock_module.fail_json.assert_called_once()
+            call_args = mock_module.fail_json.call_args[1]
+            assert call_args['msg'] == "An unexpected error occurred: Unexpected error occurred"
+            assert call_args['error']['type'] == 'unexpected'
+            assert call_args['error']['details'] == "Unexpected error occurred"
 
     def _setup_mock_module(self, tmp_path):
         """Helper to setup mock module with test parameters"""
