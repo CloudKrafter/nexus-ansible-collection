@@ -463,7 +463,7 @@ def main():
         repository=dict(type='str', required=True),
         name=dict(type='str', required=True),
         src=dict(type='path', required=True),
-        dest=dict(type='path', required=False, default='/'),
+        dest=dict(type='str', required=False, default='/'),
         validate_certs=dict(type='bool', required=False, default=True),
         timeout=dict(type='int', required=False, default=120),
         username=dict(type='str', required=False),
