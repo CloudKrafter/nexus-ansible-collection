@@ -29,9 +29,10 @@ options:
     type: str
   dest:
     description:
-      - Destination directory where the file should be saved.
-    required: true
-    type: path
+      - Destination directory inside the repository where the file should be saved.
+    required: false
+    type: str
+    default: /
   src:
     description:
       - Path to the file to be uploaded.
@@ -70,11 +71,22 @@ author:
 '''
 
 EXAMPLES = '''
-- name: Upload a file to a repsitory
+- name: Upload a file to the /nexus directory inside a repsitory
   cloudkrafter.nexus.upload_raw_artifact:
     name: nexus-343546.tar.gz
     repository: https://nexus-instance.local/repository/some-repo
     dest: /nexus
+    src: /path/to/file-to-be-uploaded.tar.gz
+    validate_certs: false
+    timeout: 60
+    username: user
+    password: password
+    token: Nexus-UserToken
+
+- name: Upload a file to the root of a repsitory
+  cloudkrafter.nexus.upload_raw_artifact:
+    name: nexus-343546.tar.gz
+    repository: https://nexus-instance.local/repository/some-repo
     src: /path/to/file-to-be-uploaded.tar.gz
     validate_certs: false
     timeout: 60
@@ -174,8 +186,8 @@ def validate_artifact_params(name, src, dest):
     """
     if not os.path.exists(src):
         raise ArtifactError(f"Source file does not exist: {src}")
-    if not os.path.isdir(dest):
-        raise ArtifactError(f"Destination is not a directory: {dest}")
+    if not dest:
+        raise ArtifactError(f"Destination is required: {dest}")
     if not name:
         raise ArtifactError("Artifact name cannot be empty")
     return True
@@ -451,7 +463,7 @@ def main():
         repository=dict(type='str', required=True),
         name=dict(type='str', required=True),
         src=dict(type='path', required=True),
-        dest=dict(type='path', required=True),
+        dest=dict(type='path', required=False, default='/'),
         validate_certs=dict(type='bool', required=False, default=True),
         timeout=dict(type='int', required=False, default=120),
         username=dict(type='str', required=False),
