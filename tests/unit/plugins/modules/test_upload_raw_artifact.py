@@ -498,7 +498,7 @@ class TestUploadArtifactModule:
 
         # Test RepositoryError handling
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.AnsibleModule', return_value=mock_module), \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.get_repository_details') as mock_repo_details:
+             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.get_repository_details') as mock_repo_details:
 
             mock_repo_details.side_effect = RepositoryError("Repository not accessible")
 
@@ -516,8 +516,8 @@ class TestUploadArtifactModule:
 
         # Test ArtifactError handling
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.AnsibleModule', return_value=mock_module), \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.get_repository_details', return_value=('raw', 'hosted')), \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.check_artifact_exists') as mock_check:
+             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.get_repository_details', return_value=('raw', 'hosted')), \
+             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.check_artifact_exists') as mock_check:
 
             mock_check.side_effect = ArtifactError("Failed to check artifact")
 
@@ -534,17 +534,17 @@ class TestUploadArtifactModule:
 
         # Test unexpected exception handling
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.AnsibleModule', return_value=mock_module), \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.get_repository_details') as mock_repo_details:
+             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.upload_raw_artifact.get_repository_details') as mock_repo_details:
 
-            mock_repo_details.side_effect = Exception("Unexpected error occurred")
+             mock_repo_details.side_effect = Exception("Unexpected error occurred")
 
-            main()
+             main()
 
-            mock_module.fail_json.assert_called_once()
-            call_args = mock_module.fail_json.call_args[1]
-            assert call_args['msg'] == "An unexpected error occurred: Unexpected error occurred"
-            assert call_args['error']['type'] == 'unexpected'
-            assert call_args['error']['details'] == "Unexpected error occurred"
+             mock_module.fail_json.assert_called_once()
+             call_args = mock_module.fail_json.call_args[1]
+             assert call_args['msg'] == "An unexpected error occurred: Unexpected error occurred"
+             assert call_args['error']['type'] == 'unexpected'
+             assert call_args['error']['details'] == "Unexpected error occurred"
 
     def _setup_mock_module(self, tmp_path):
         """Helper to setup mock module with test parameters"""
@@ -567,7 +567,7 @@ class TestUploadArtifactModule:
         mock_module.params = module_params
         mock_module.fail_json = MagicMock()
         mock_module.exit_json = MagicMock()
-        
+
         return mock_module, test_file
 
 # class TestUploadArtifactCheckMode:
