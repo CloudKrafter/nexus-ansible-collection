@@ -324,10 +324,17 @@ def check_artifact_exists(base_url, repository_name, name, dest, headers, valida
         timeout (int): Request timeout in seconds
 
     Returns:
-        bool: True if artifact exists, False otherwise
+        tuple: (exists, component_id)
+               exists (bool): True if artifact exists, False otherwise
+               component_id (str): ID of the component if found, None otherwise
 
     Raises:
         ArtifactError: If the search request fails
+    
+    Note:
+        This function uses the search API to find the artifact in the repository.
+        This api endpoint is known to be slow and inefficient, and should be used with caution.
+        When issues occur, use the component API to get the list of components and search for the artifact in the list.
     """
 
     url = f"{base_url}/service/rest/v1/search/assets"
@@ -367,9 +374,9 @@ def check_artifact_exists(base_url, repository_name, name, dest, headers, valida
         items = content.get('items', [])
         for item in items:
             if item.get('path') == full_path:
-                return True
+                return True, item.get('id')
 
-        return False
+        return False, None
 
     except Exception as e:
         raise ArtifactError(f"Error checking artifact existence: {str(e)}")
@@ -525,7 +532,7 @@ def main():
         })
 
         # Check if artifact exists
-        exists = check_artifact_exists(
+        exists, component_id = check_artifact_exists(
             base_url=base_url,
             repository_name=repo_name,
             name=module.params['name'],
@@ -535,6 +542,8 @@ def main():
             timeout=module.params['timeout']
         )
         result['exists'] = exists
+        if component_id:
+            result['details']['component_id'] = component_id
 
         # Handle check mode and existing artifacts
         if module.check_mode:

@@ -230,12 +230,13 @@ class TestUploadArtifactModule:
             mock_response.code = 200
             mock_response.read.return_value = json.dumps({
                 'items': [{
-                    'path': '/dest/test-artifact.txt'
+                    'path': '/dest/test-artifact.txt',
+                    'id': 'cmF3LWhvc3RlZDo0ZjFiYmNkZA'
                 }]
             }).encode()
             mock_open.return_value = mock_response
 
-            exists = check_artifact_exists(
+            exists, component_id = check_artifact_exists(
                 base_url=base_url,
                 repository_name=repository_name,
                 name=name,
@@ -246,6 +247,7 @@ class TestUploadArtifactModule:
             )
 
             assert exists is True
+            assert component_id == 'cmF3LWhvc3RlZDo0ZjFiYmNkZA'
             mock_open.assert_called_once_with(
                 'https://nexus.example.com/service/rest/v1/search/assets?repository=raw-hosted&name=/dest/test-artifact.txt&sort=version&direction=desc',
                 headers=headers,
@@ -263,7 +265,7 @@ class TestUploadArtifactModule:
             }).encode()
             mock_open.return_value = mock_response
 
-            exists = check_artifact_exists(
+            exists, component_id = check_artifact_exists(
                 base_url=base_url,
                 repository_name=repository_name,
                 name=name,
@@ -274,6 +276,7 @@ class TestUploadArtifactModule:
             )
 
             assert exists is False
+            assert component_id is None
 
         # Test case: HTTP error
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
@@ -436,7 +439,7 @@ class TestUploadArtifactModule:
 
                 # Mock artifact existence check
                 with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_artifact_exists') as mock_check_exists:
-                    mock_check_exists.return_value = False
+                    mock_check_exists.return_value = (False, None)
 
                     # Mock perform_upload
                     with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.perform_upload') as mock_upload:
@@ -464,7 +467,7 @@ class TestUploadArtifactModule:
                 mock_repo_details.return_value = ('raw', 'hosted')
 
                 with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_artifact_exists') as mock_check_exists:
-                    mock_check_exists.return_value = True
+                    mock_check_exists.return_value = (True, 'cmF3LWhvc3RlZDo0ZjFiYmNkZA')
 
                     main()
 
@@ -473,6 +476,7 @@ class TestUploadArtifactModule:
                     call_args = mock_module.exit_json.call_args[1]
                     assert call_args['changed'] is False
                     assert call_args['msg'] == "Artifact already exists in repository"
+                    assert call_args['details']['component_id'] == 'cmF3LWhvc3RlZDo0ZjFiYmNkZA'
 
         # Test repository error
         mock_module.fail_json.reset_mock()
