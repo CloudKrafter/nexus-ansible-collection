@@ -174,31 +174,6 @@ def split_repository_url(repository):
     return base_url, repository_name
 
 
-# Might not be needed when 'required_if=[['state', 'present', ['src']]]' is used in the module.
-def validate_component_params(name, src, dest):
-    """
-    Validates the parameters for the component to be uploaded.
-
-    Args:
-        name (str): Name of the component.
-        src (str): Path to the file to be uploaded.
-        dest (str): Destination directory where the file should be saved.
-
-    Raises:
-        ValueError: If any of the parameters are invalid
-
-    Returns:
-        None
-    """
-    if not os.path.exists(src):
-        raise ComponentError(f"Source file does not exist: {src}")
-    if not dest:
-        raise ComponentError(f"Destination is required: {dest}")
-    if not name:
-        raise ComponentError("Component name cannot be empty")
-    return True
-
-
 def create_auth_headers(username=None, password=None, token=None, for_upload=False):
     """
     Creates authentication headers for requests
