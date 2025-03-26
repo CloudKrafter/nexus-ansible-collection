@@ -20,12 +20,12 @@ version_added: "1.21.0"
 options:
   repository:
     description:
-      - The URL of the repository to upload the artifact to.
+      - The URL of the repository to upload the component to.
     required: true
     type: str
   name:
     description:
-      - Name of the artifact once uploaded.
+      - Name of the component once uploaded.
     required: true
     type: str
     aliases: [ filename ]
@@ -133,8 +133,8 @@ class RepositoryError(NexusError):
     pass
 
 
-class ArtifactError(NexusError):
-    """Artifact related errors"""
+class ComponentError(NexusError):
+    """Component related errors"""
     pass
 
 
@@ -174,12 +174,13 @@ def split_repository_url(repository):
     return base_url, repository_name
 
 
-def validate_artifact_params(name, src, dest):
+# Might not be needed when 'required_if=[['state', 'present', ['src']]]' is used in the module.
+def validate_component_params(name, src, dest):
     """
-    Validates the parameters for the artifact to be uploaded.
+    Validates the parameters for the component to be uploaded.
 
     Args:
-        name (str): Name of the artifact.
+        name (str): Name of the component.
         src (str): Path to the file to be uploaded.
         dest (str): Destination directory where the file should be saved.
 
@@ -190,11 +191,11 @@ def validate_artifact_params(name, src, dest):
         None
     """
     if not os.path.exists(src):
-        raise ArtifactError(f"Source file does not exist: {src}")
+        raise ComponentError(f"Source file does not exist: {src}")
     if not dest:
-        raise ArtifactError(f"Destination is required: {dest}")
+        raise ComponentError(f"Destination is required: {dest}")
     if not name:
-        raise ArtifactError("Artifact name cannot be empty")
+        raise ComponentError("Component name cannot be empty")
     return True
 
 
@@ -310,14 +311,14 @@ def get_repository_details(repository_name, base_url, headers, module):
         raise RepositoryError(f"Failed to parse repository details: {str(e)}")
 
 
-def check_artifact_exists(base_url, repository_name, name, dest, headers, validate_certs, timeout):
+def check_component_exists(base_url, repository_name, name, dest, headers, validate_certs, timeout):
     """
-    Checks if an artifact already exists in the repository.
+    Checks if a component already exists in the repository.
 
     Args:
         base_url (str): Base URL of the Nexus instance
         repository_name (str): Name of the repository to check
-        name (str): Name of the artifact to check
+        name (str): Name of the component to check
         dest (str): Destination directory in repository
         headers (dict): Request headers including authentication
         validate_certs (bool): Whether to validate SSL certificates
@@ -325,16 +326,16 @@ def check_artifact_exists(base_url, repository_name, name, dest, headers, valida
 
     Returns:
         tuple: (exists, component_id)
-               exists (bool): True if artifact exists, False otherwise
+               exists (bool): True if component exists, False otherwise
                component_id (str): ID of the component if found, None otherwise
 
     Raises:
-        ArtifactError: If the search request fails
+        ComponentError: If the search request fails
 
     Note:
-        This function uses the search API to find the artifact in the repository.
+        This function uses the search API to find the component in the repository.
         This api endpoint is known to be slow and inefficient, and should be used with caution.
-        When issues occur, use the component API to get the list of components and search for the artifact in the list.
+        When issues occur, use the component API to get the list of components and search for the component in the list.
     """
 
     url = f"{base_url}/service/rest/v1/search/assets"
@@ -363,8 +364,8 @@ def check_artifact_exists(base_url, repository_name, name, dest, headers, valida
         )
 
         if response.code != 200:
-            raise ArtifactError(
-                f"Failed to search for artifact: HTTP {response.code}"
+            raise ComponentError(
+                f"Failed to search for component: HTTP {response.code}"
             )
 
         # Parse response
@@ -379,7 +380,7 @@ def check_artifact_exists(base_url, repository_name, name, dest, headers, valida
         return False, None
 
     except Exception as e:
-        raise ArtifactError(f"Error checking artifact existence: {str(e)}")
+        raise ComponentError(f"Error checking component existence: {str(e)}")
 
 
 def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
@@ -389,7 +390,7 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
     Args:
         url (str): Upload URL for the repository
         src (str): Path to source file
-        name (str): Name of the artifact
+        name (str): Name of the component
         dest (str): Destination directory in repository
         headers (dict): Request headers including authentication
         validate_certs (bool): Whether to validate SSL certificates
@@ -399,12 +400,12 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
         tuple: (success, status_code, message)
 
     Raises:
-        ArtifactError: If upload fails
+        ComponentError: If upload fails
     """
     try:
         # Ensure source file exists and is readable
         if not os.path.isfile(src):
-            raise ArtifactError(f"Source file not found: {src}")
+            raise ComponentError(f"Source file not found: {src}")
 
         # Clean up destination path
         dest = dest.strip('/')
@@ -466,7 +467,7 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
                 return False, status_code, f"Upload failed: {error_msg}"
 
     except Exception as e:
-        raise ArtifactError(f"Upload failed: {str(e)}")
+        raise ComponentError(f"Upload failed: {str(e)}")
 
 
 def delete_component_by_id(base_url, component_id, headers, validate_certs, timeout):
@@ -484,7 +485,7 @@ def delete_component_by_id(base_url, component_id, headers, validate_certs, time
         bool: True if deletion was successful, False otherwise
 
     Raises:
-        ArtifactError: If deletion fails
+        ComponentError: If deletion fails
     """
     url = f"{base_url}/service/rest/v1/components/{component_id}"
 
@@ -501,10 +502,10 @@ def delete_component_by_id(base_url, component_id, headers, validate_certs, time
             return True
         else:
             error_msg = response.read().decode('utf-8')
-            raise ArtifactError(f"Deletion failed: {error_msg}")
+            raise ComponentError(f"Deletion failed: {error_msg}")
 
     except Exception as e:
-        raise ArtifactError(f"Deletion failed: {str(e)}")
+        raise ComponentError(f"Deletion failed: {str(e)}")
 
 
 def main():
@@ -525,6 +526,7 @@ def main():
         argument_spec=module_args,
         supports_check_mode=True,
         mutually_exclusive=[['token', 'username'], ['token', 'password']]
+        # required_if=[['state', 'present', ['src']]]
     )
 
     result = dict(
@@ -569,8 +571,8 @@ def main():
             'repository_type': repo_type
         })
 
-        # Check if artifact exists
-        exists, component_id = check_artifact_exists(
+        # Check if component exists
+        exists, component_id = check_component_exists(
             base_url=base_url,
             repository_name=repo_name,
             name=module.params['name'],
@@ -583,18 +585,18 @@ def main():
         if component_id:
             result['details']['component_id'] = component_id
 
-        # Handle check mode and existing artifacts
+        # Handle check mode and existing components
         if module.check_mode:
             result.update({
                 'changed': not exists,
-                'msg': f"Artifact would {'not be uploaded (already exists)' if exists else 'be uploaded'} (check mode)"
+                'msg': f"Component would {'not be uploaded (already exists)' if exists else 'be uploaded'} (check mode)"
             })
             module.exit_json(**result)
 
         if exists:
             result.update({
                 'changed': False,
-                'msg': "Artifact already exists in repository"
+                'msg': "Component already exists in repository"
             })
             module.exit_json(**result)
 
@@ -622,7 +624,7 @@ def main():
         result.update({
             'changed': success,
             'status_code': status_code,
-            'msg': "Artifact upload successful" if success else message
+            'msg': "Component upload successful" if success else message
         })
 
         if success:
@@ -630,10 +632,10 @@ def main():
         else:
             module.fail_json(**result)
 
-    except (RepositoryError, ArtifactError) as e:
+    except (RepositoryError, ComponentError) as e:
         result.update({
             'msg': str(e),
-            'error': {'type': 'artifact', 'details': str(e)}
+            'error': {'type': 'component', 'details': str(e)}
         })
         module.fail_json(**result)
     except Exception as e:

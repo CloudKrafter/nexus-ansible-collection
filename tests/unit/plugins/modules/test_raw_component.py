@@ -17,15 +17,15 @@ from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import
     create_auth_headers,
     get_repository_details,
     build_upload_url,
-    check_artifact_exists,
+    check_component_exists,
     delete_component_by_id,
     perform_upload,
     RepositoryError,
-    ArtifactError
+    ComponentError
 )
 
 
-class TestUploadArtifactModule:
+class TestRawComponentModule:
     """Tests for raw_component module"""
 
     @pytest.mark.parametrize('repository,expected', [
@@ -213,31 +213,31 @@ class TestUploadArtifactModule:
         with pytest.raises(ValueError):
             build_upload_url(base_url, "")
 
-    def test_check_artifact_exists(self):
-        """Test artifact existence checking"""
+    def test_check_component_exists(self):
+        """Test component existence checking"""
 
         # Setup test data
         base_url = "https://nexus.example.com"
         repository_name = "raw-hosted"
-        name = "test-artifact.txt"
+        name = "test-component.txt"
         dest = "/dest"
         headers = {'Authorization': 'Bearer test-token'}
         validate_certs = True
         timeout = 30
 
-        # Test case: Artifact exists
+        # Test case: Component exists
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
             mock_response = MagicMock()
             mock_response.code = 200
             mock_response.read.return_value = json.dumps({
                 'items': [{
-                    'path': '/dest/test-artifact.txt',
+                    'path': '/dest/test-component.txt',
                     'id': 'cmF3LWhvc3RlZDo0ZjFiYmNkZA'
                 }]
             }).encode()
             mock_open.return_value = mock_response
 
-            exists, component_id = check_artifact_exists(
+            exists, component_id = check_component_exists(
                 base_url=base_url,
                 repository_name=repository_name,
                 name=name,
@@ -250,14 +250,14 @@ class TestUploadArtifactModule:
             assert exists is True
             assert component_id == 'cmF3LWhvc3RlZDo0ZjFiYmNkZA'
             mock_open.assert_called_once_with(
-                'https://nexus.example.com/service/rest/v1/search/assets?repository=raw-hosted&name=/dest/test-artifact.txt&sort=version&direction=desc',
+                'https://nexus.example.com/service/rest/v1/search/assets?repository=raw-hosted&name=/dest/test-component.txt&sort=version&direction=desc',
                 headers=headers,
                 validate_certs=validate_certs,
                 timeout=timeout,
                 method='GET'
             )
 
-        # Test case: Artifact doesn't exist
+        # Test case: Component doesn't exist
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
             mock_response = MagicMock()
             mock_response.code = 200
@@ -266,7 +266,7 @@ class TestUploadArtifactModule:
             }).encode()
             mock_open.return_value = mock_response
 
-            exists, component_id = check_artifact_exists(
+            exists, component_id = check_component_exists(
                 base_url=base_url,
                 repository_name=repository_name,
                 name=name,
@@ -285,8 +285,8 @@ class TestUploadArtifactModule:
             mock_response.code = 404
             mock_open.return_value = mock_response
 
-            with pytest.raises(ArtifactError, match="Failed to search for artifact: HTTP 404"):
-                check_artifact_exists(
+            with pytest.raises(ComponentError, match="Failed to search for component: HTTP 404"):
+                check_component_exists(
                     base_url=base_url,
                     repository_name=repository_name,
                     name=name,
@@ -300,8 +300,8 @@ class TestUploadArtifactModule:
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
             mock_open.side_effect = Exception("Connection refused")
 
-            with pytest.raises(ArtifactError, match="Error checking artifact existence: Connection refused"):
-                check_artifact_exists(
+            with pytest.raises(ComponentError, match="Error checking component existence: Connection refused"):
+                check_component_exists(
                     base_url=base_url,
                     repository_name=repository_name,
                     name=name,
@@ -312,7 +312,7 @@ class TestUploadArtifactModule:
                 )
 
     def test_perform_upload(self, tmp_path):
-        """Test artifact upload functionality"""
+        """Test component upload functionality"""
         # Setup test data
         url = "https://nexus.example.com/service/rest/v1/components?repository=raw-hosted"
         name = "test-file.txt"
@@ -380,7 +380,7 @@ class TestUploadArtifactModule:
             assert "Upload failed" in message
 
         # Test missing source file
-        with pytest.raises(ArtifactError, match="Source file not found"):
+        with pytest.raises(ComponentError, match="Source file not found"):
             perform_upload(
                 url=url,
                 src="/nonexistent/file.txt",
@@ -395,7 +395,7 @@ class TestUploadArtifactModule:
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open_url:
             mock_open_url.side_effect = Exception("Connection refused")
 
-            with pytest.raises(ArtifactError, match="Upload failed: Connection refused"):
+            with pytest.raises(ComponentError, match="Upload failed: Connection refused"):
                 perform_upload(
                     url=url,
                     src=src,
@@ -409,13 +409,13 @@ class TestUploadArtifactModule:
     def test_main_function(self, tmp_path):
         """Test main function with various scenarios"""
         # Create a test file
-        test_file = tmp_path / "test-artifact.txt"
+        test_file = tmp_path / "test-component.txt"
         test_file.write_text("test content")
 
         # Basic module parameters
         module_params = {
             'repository': 'https://nexus.example.com/repository/raw-hosted',
-            'name': 'test-artifact.txt',
+            'name': 'test-component.txt',
             'src': str(test_file),
             'dest': '/upload/path',
             'validate_certs': False,
@@ -438,8 +438,8 @@ class TestUploadArtifactModule:
             with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details:
                 mock_repo_details.return_value = ('raw', 'hosted')
 
-                # Mock artifact existence check
-                with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_artifact_exists') as mock_check_exists:
+                # Mock component existence check
+                with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
                     mock_check_exists.return_value = (False, None)
 
                     # Mock perform_upload
@@ -454,10 +454,10 @@ class TestUploadArtifactModule:
                         mock_module.exit_json.assert_called_once()
                         call_args = mock_module.exit_json.call_args[1]
                         assert call_args['changed'] is True
-                        assert call_args['msg'] == "Artifact upload successful"
+                        assert call_args['msg'] == "Component upload successful"
                         assert call_args['status_code'] == 201
 
-        # Test existing artifact
+        # Test existing component
         mock_module.check_mode = False
         mock_module.exit_json.reset_mock()
 
@@ -467,16 +467,16 @@ class TestUploadArtifactModule:
             with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details:
                 mock_repo_details.return_value = ('raw', 'hosted')
 
-                with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_artifact_exists') as mock_check_exists:
+                with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
                     mock_check_exists.return_value = (True, 'cmF3LWhvc3RlZDo0ZjFiYmNkZA')
 
                     main()
 
-                    # Verify no upload when artifact exists
+                    # Verify no upload when component exists
                     mock_module.exit_json.assert_called_once()
                     call_args = mock_module.exit_json.call_args[1]
                     assert call_args['changed'] is False
-                    assert call_args['msg'] == "Artifact already exists in repository"
+                    assert call_args['msg'] == "Component already exists in repository"
                     assert call_args['details']['component_id'] == 'cmF3LWhvc3RlZDo0ZjFiYmNkZA'
 
         # Test repository error
@@ -494,7 +494,7 @@ class TestUploadArtifactModule:
                 mock_module.fail_json.assert_called_once()
                 call_args = mock_module.fail_json.call_args[1]
                 assert call_args['msg'] == "Repository not found"
-                assert call_args['error']['type'] == 'artifact'
+                assert call_args['error']['type'] == 'component'
 
     def test_main_error_handling(self, tmp_path):
         """Test main function error handling"""
@@ -513,26 +513,26 @@ class TestUploadArtifactModule:
             mock_module.fail_json.assert_called_once()
             call_args = mock_module.fail_json.call_args[1]
             assert call_args['msg'] == "Repository not accessible"
-            assert call_args['error']['type'] == 'artifact'
+            assert call_args['error']['type'] == 'component'
             assert call_args['error']['details'] == "Repository not accessible"
 
         # Reset mocks
         mock_module.fail_json.reset_mock()
 
-        # Test ArtifactError handling
+        # Test ComponentError handling
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule', return_value=mock_module), \
              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details', return_value=('raw', 'hosted')), \
-             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_artifact_exists') as mock_check:
+             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check:
 
-            mock_check.side_effect = ArtifactError("Failed to check artifact")
+            mock_check.side_effect = ComponentError("Failed to check component")
 
             main()
 
             mock_module.fail_json.assert_called_once()
             call_args = mock_module.fail_json.call_args[1]
-            assert call_args['msg'] == "Failed to check artifact"
-            assert call_args['error']['type'] == 'artifact'
-            assert call_args['error']['details'] == "Failed to check artifact"
+            assert call_args['msg'] == "Failed to check component"
+            assert call_args['error']['type'] == 'component'
+            assert call_args['error']['details'] == "Failed to check component"
 
         # Reset mocks
         mock_module.fail_json.reset_mock()
@@ -553,12 +553,12 @@ class TestUploadArtifactModule:
 
     def _setup_mock_module(self, tmp_path):
         """Helper to setup mock module with test parameters"""
-        test_file = tmp_path / "test-artifact.txt"
+        test_file = tmp_path / "test-component.txt"
         test_file.write_text("test content")
 
         module_params = {
             'repository': 'https://nexus.example.com/repository/raw-hosted',
-            'name': 'test-artifact.txt',
+            'name': 'test-component.txt',
             'src': str(test_file),
             'dest': '/upload/path',
             'validate_certs': False,
@@ -574,7 +574,6 @@ class TestUploadArtifactModule:
         mock_module.exit_json = MagicMock()
 
         return mock_module, test_file
-
 
     def test_delete_component_by_id(self):
         """Test component deletion by ID"""
@@ -615,7 +614,7 @@ class TestUploadArtifactModule:
             mock_response.read.return_value = b"Component not found"
             mock_open.return_value = mock_response
 
-            with pytest.raises(ArtifactError, match="Deletion failed: Component not found"):
+            with pytest.raises(ComponentError, match="Deletion failed: Component not found"):
                 delete_component_by_id(
                     base_url=base_url,
                     component_id=component_id,
@@ -628,7 +627,7 @@ class TestUploadArtifactModule:
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
             mock_open.side_effect = Exception("Connection refused")
 
-            with pytest.raises(ArtifactError, match="Deletion failed: Connection refused"):
+            with pytest.raises(ComponentError, match="Deletion failed: Connection refused"):
                 delete_component_by_id(
                     base_url=base_url,
                     component_id=component_id,
@@ -640,7 +639,7 @@ class TestUploadArtifactModule:
 
 # TODO: test aliases for raw_component module
 
-# class TestUploadArtifactCheckMode:
+# class TestRawComponentCheckMode:
 #     """Tests for raw_component module check mode behavior"""
 
 #     @pytest.fixture(autouse=True)
@@ -652,12 +651,12 @@ class TestUploadArtifactModule:
 #     def _setup_mock_module(self, tmp_path):
 #         """Helper to setup mock module with test parameters"""
 #         # Create test file content directly without opening file
-#         test_file = tmp_path / "test-artifact.txt"
+#         test_file = tmp_path / "test-component.txt"
 #         test_file.write_text("test content")
 
 #         module_params = {
 #             'repository': 'https://nexus.example.com/repository/raw-hosted',
-#             'name': 'test-artifact.txt',
+#             'name': 'test-component.txt',
 #             'src': str(test_file),
 #             'dest': '/upload/path',
 #             'validate_certs': False,
@@ -678,14 +677,14 @@ class TestUploadArtifactModule:
 
 #         return mock_module, test_file
 
-#     def test_check_mode_existing_artifact(self, tmp_path):
-#         """Test check mode when artifact exists"""
+#     def test_check_mode_existing_component(self, tmp_path):
+#         """Test check mode when component exists"""
 #         mock_module, test_file = self._setup_mock_module(tmp_path)
 
 #         with patch('builtins.open', mock_open(read_data="test content")), \
 #              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule', return_value=mock_module), \
 #              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details', return_value=('raw', 'hosted')), \
-#              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_artifact_exists', return_value=True):
+#              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists', return_value=True):
 
 #             from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import main
 #             main()
@@ -696,13 +695,13 @@ class TestUploadArtifactModule:
 #             assert "exists" in call_args['msg']
 #             assert call_args['exists'] is True
 
-#     def test_check_mode_new_artifact(self, tmp_path):
-#         """Test check mode when artifact doesn't exist"""
+#     def test_check_mode_new_component(self, tmp_path):
+#         """Test check mode when component doesn't exist"""
 #         mock_module, test_file = self._setup_mock_module(tmp_path)
 
 #         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule', return_value=mock_module), \
 #              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details', return_value=('raw', 'hosted')), \
-#              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_artifact_exists', return_value=False):
+#              patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists', return_value=False):
 
 #             from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import main
 #             main()
