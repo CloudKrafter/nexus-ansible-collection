@@ -11,10 +11,11 @@ __metaclass__ = type
 
 DOCUMENTATION = '''
 ---
-module: upload_raw_artifact
-short_description: Upload an artifact to a RAW repositoy in Nexus Repository Manager
+module: raw_component
+short_description: Upload or delete a component in a RAW repositoy
 description:
-  - This module uploads a given artifact (file) to a Nexus repository.
+  - This module uploads or deletes a given raw component in a Nexus repository.
+  - The module supports basic authentication and token-based authentication.
 version_added: "1.21.0"
 options:
   repository:
@@ -72,7 +73,7 @@ author:
 
 EXAMPLES = '''
 - name: Upload a file to the /nexus directory inside a repsitory
-  cloudkrafter.nexus.upload_raw_artifact:
+  cloudkrafter.nexus.raw_component:
     name: nexus-343546.tar.gz
     repository: https://nexus-instance.local/repository/some-repo
     dest: /nexus
@@ -84,7 +85,7 @@ EXAMPLES = '''
     token: Nexus-UserToken
 
 - name: Upload a file to the root of a repsitory
-  cloudkrafter.nexus.upload_raw_artifact:
+  cloudkrafter.nexus.raw_component:
     name: nexus-343546.tar.gz
     repository: https://nexus-instance.local/repository/some-repo
     src: /path/to/file-to-be-uploaded.tar.gz
