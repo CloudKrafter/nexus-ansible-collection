@@ -18,6 +18,7 @@ from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import
     get_repository_details,
     build_upload_url,
     check_artifact_exists,
+    delete_component_by_id,
     perform_upload,
     RepositoryError,
     ArtifactError
@@ -573,6 +574,68 @@ class TestUploadArtifactModule:
         mock_module.exit_json = MagicMock()
 
         return mock_module, test_file
+
+
+    def test_delete_component_by_id(self):
+        """Test component deletion by ID"""
+        # Setup test data
+        base_url = "https://nexus.example.com"
+        component_id = "cmF3LWhvc3RlZDo0ZjFiYmNkZA"
+        headers = {'Authorization': 'Bearer test-token'}
+        validate_certs = True
+        timeout = 30
+
+        # Test successful deletion
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+            mock_response = MagicMock()
+            mock_response.code = 204
+            mock_open.return_value = mock_response
+
+            result = delete_component_by_id(
+                base_url=base_url,
+                component_id=component_id,
+                headers=headers,
+                validate_certs=validate_certs,
+                timeout=timeout
+            )
+
+            assert result is True
+            mock_open.assert_called_once_with(
+                f"{base_url}/service/rest/v1/components/{component_id}",
+                headers=headers,
+                validate_certs=validate_certs,
+                timeout=timeout,
+                method='DELETE'
+            )
+
+        # Test failed deletion (HTTP error)
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+            mock_response = MagicMock()
+            mock_response.code = 404
+            mock_response.read.return_value = b"Component not found"
+            mock_open.return_value = mock_response
+
+            with pytest.raises(ArtifactError, match="Deletion failed: Component not found"):
+                delete_component_by_id(
+                    base_url=base_url,
+                    component_id=component_id,
+                    headers=headers,
+                    validate_certs=validate_certs,
+                    timeout=timeout
+                )
+
+        # Test connection error
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+            mock_open.side_effect = Exception("Connection refused")
+
+            with pytest.raises(ArtifactError, match="Deletion failed: Connection refused"):
+                delete_component_by_id(
+                    base_url=base_url,
+                    component_id=component_id,
+                    headers=headers,
+                    validate_certs=validate_certs,
+                    timeout=timeout
+                )
 
 
 # TODO: test aliases for raw_component module

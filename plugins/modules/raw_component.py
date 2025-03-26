@@ -330,7 +330,7 @@ def check_artifact_exists(base_url, repository_name, name, dest, headers, valida
 
     Raises:
         ArtifactError: If the search request fails
-    
+
     Note:
         This function uses the search API to find the artifact in the repository.
         This api endpoint is known to be slow and inefficient, and should be used with caution.
@@ -467,6 +467,44 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
 
     except Exception as e:
         raise ArtifactError(f"Upload failed: {str(e)}")
+
+
+def delete_component_by_id(base_url, component_id, headers, validate_certs, timeout):
+    """
+    Delete a component from the repository by its ID.
+
+    Args:
+        base_url (str): Base URL of the Nexus instance
+        component_id (str): ID of the component to delete
+        headers (dict): Request headers including authentication
+        validate_certs (bool): Whether to validate SSL certificates
+        timeout (int): Request timeout in seconds
+
+    Returns:
+        bool: True if deletion was successful, False otherwise
+
+    Raises:
+        ArtifactError: If deletion fails
+    """
+    url = f"{base_url}/service/rest/v1/components/{component_id}"
+
+    try:
+        response = open_url(
+            url,
+            headers=headers,
+            validate_certs=validate_certs,
+            timeout=timeout,
+            method='DELETE'
+        )
+
+        if response.code in [200, 204]:
+            return True
+        else:
+            error_msg = response.read().decode('utf-8')
+            raise ArtifactError(f"Deletion failed: {error_msg}")
+
+    except Exception as e:
+        raise ArtifactError(f"Deletion failed: {str(e)}")
 
 
 def main():
