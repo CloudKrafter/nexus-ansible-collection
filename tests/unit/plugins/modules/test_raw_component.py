@@ -570,6 +570,9 @@ class TestUploadArtifactModule:
 
         return mock_module, test_file
 
+
+# TODO: test aliases for raw_component module
+
 # class TestUploadArtifactCheckMode:
 #     """Tests for raw_component module check mode behavior"""
 

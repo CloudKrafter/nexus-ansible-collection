@@ -28,17 +28,20 @@ options:
       - Name of the artifact once uploaded.
     required: true
     type: str
+    aliases: [ filename ]
   dest:
     description:
       - Destination directory inside the repository where the file should be saved.
     required: false
     type: str
     default: /
+    aliases: [ directory ]
   src:
     description:
       - Path to the file to be uploaded.
     required: true
     type: path
+    aliases: [ file ]
   validate_certs:
     description:
       - If False, SSL certificates will not be validated.
@@ -67,6 +70,7 @@ options:
         - Token for bearer authentication.
     type: str
     required: false
+    aliases: [ usertoken ]
 author:
   - "Brian Veltman (@cloudkrafter)"
 '''
@@ -462,14 +466,14 @@ def main():
     """Main function for the Ansible module"""
     module_args = dict(
         repository=dict(type='str', required=True),
-        name=dict(type='str', required=True),
-        src=dict(type='path', required=True),
-        dest=dict(type='str', required=False, default='/'),
+        name=dict(type='str', aliases=['filename'], required=True),
+        src=dict(type='path', aliases=['file'], required=True),
+        dest=dict(type='str', aliases=['directory'], required=False, default='/'),
         validate_certs=dict(type='bool', required=False, default=True),
         timeout=dict(type='int', required=False, default=120),
         username=dict(type='str', required=False),
         password=dict(type='str', required=False, no_log=True),
-        token=dict(type='str', required=False, no_log=True)
+        token=dict(type='str', aliases=['usertoken'], required=False, no_log=True)
     )
 
     module = AnsibleModule(
