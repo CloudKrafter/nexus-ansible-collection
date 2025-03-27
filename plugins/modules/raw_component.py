@@ -299,14 +299,14 @@ def main():
                     'changed': False,
                     'msg': "Component already exists in repository"
                 })
-                module.exit_json(**result)
+                return module.exit_json(**result)
 
             if module.check_mode:
                 result.update({
                     'changed': True,
                     'msg': "Component would be uploaded (check mode)"
                 })
-                module.exit_json(**result)
+                return module.exit_json(**result)
 
             # Proceed with upload
             upload_url = build_upload_url(base_url, repo_name)
@@ -335,21 +335,22 @@ def main():
             })
 
             if success:
-                module.exit_json(**result)
+                return module.exit_json(**result)
         else:
             if not exists:
                 result.update({
                     'changed': False,
                     'msg': "Component does not exist in repository"
                 })
-                module.exit_json(**result)
+                return module.exit_json(**result)
 
             if module.check_mode:
                 result.update({
                     'changed': True,
                     'msg': "Component would have been deleted (if not in check mode)"
                 })
-                module.exit_json(**result)
+                return module.exit_json(**result)
+
 
             # Proceed with deletion
             if delete_component_by_id(
@@ -363,7 +364,7 @@ def main():
                     'changed': True,
                     'msg': "Component deleted successfully"
                 })
-                module.exit_json(**result)
+                return module.exit_json(**result)
             else:
                 result.update({
                     'changed': False,
@@ -376,13 +377,13 @@ def main():
             'msg': str(e),
             'error': {'type': 'component', 'details': str(e)}
         })
-        module.fail_json(**result)
+        return module.fail_json(**result)
     except Exception as e:
         result.update({
             'msg': f"An unexpected error occurred: {str(e)}",
             'error': {'type': 'unexpected', 'details': str(e)}
         })
-        module.fail_json(**result)
+        return module.fail_json(**result)
 
 
 if __name__ == '__main__':

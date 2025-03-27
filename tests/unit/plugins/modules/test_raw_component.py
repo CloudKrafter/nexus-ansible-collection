@@ -358,3 +358,106 @@ class TestRawComponentModule:
         mock_module.exit_json = MagicMock()
 
         return mock_module, test_file
+
+    def test_check_mode(self, tmp_path):
+        """Test check mode behavior for both present and absent states"""
+        from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import main
+
+        # Create a test file
+        test_file = tmp_path / "test-component.txt"
+        test_file.write_text("test content")
+
+        # Basic module parameters
+        module_params = {
+            'state': 'present',
+            'repository': 'https://nexus.example.com/repository/raw-hosted',
+            'name': 'test-component.txt',
+            'src': str(test_file),
+            'dest': '/upload/path',
+            'validate_certs': False,
+            'timeout': 30,
+            'username': 'testuser',
+            'password': 'testpass'
+        }
+
+        # Test check mode for state=present, component doesn't exist
+        mock_module = MagicMock()
+        mock_module.params = module_params.copy()
+        mock_module.check_mode = True
+
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+
+            mock_ansible_module.return_value = mock_module
+            mock_repo_details.return_value = ('raw', 'hosted')
+            mock_check_exists.return_value = (False, None)
+
+            main()
+
+            # Verify check mode behavior for upload
+            mock_module.exit_json.assert_called_once()
+            call_args = mock_module.exit_json.call_args[1]
+            assert call_args['changed'] is True
+            assert call_args['msg'] == "Component would be uploaded (check mode)"
+            assert not call_args['exists']
+
+        # Test check mode for state=present, component exists
+        mock_module.exit_json.reset_mock()
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+
+            mock_ansible_module.return_value = mock_module
+            mock_repo_details.return_value = ('raw', 'hosted')
+            mock_check_exists.return_value = (True, 'test-component-id')
+
+            main()
+
+            # Verify check mode behavior for existing component
+            mock_module.exit_json.assert_called_once()
+            call_args = mock_module.exit_json.call_args[1]
+            assert call_args['changed'] is False
+            assert call_args['msg'] == "Component already exists in repository"
+            assert call_args['exists'] is True
+            assert call_args['details']['component_id'] == 'test-component-id'
+
+        # Test check mode for state=absent, component exists
+        mock_module.params['state'] = 'absent'
+        mock_module.exit_json.reset_mock()
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+
+            mock_ansible_module.return_value = mock_module
+            mock_repo_details.return_value = ('raw', 'hosted')
+            mock_check_exists.return_value = (True, 'test-component-id')
+
+            main()
+
+            # Verify check mode behavior for deletion
+            mock_module.exit_json.assert_called_once()
+            call_args = mock_module.exit_json.call_args[1]
+            assert call_args['changed'] is True
+            assert call_args['msg'] == "Component would have been deleted (if not in check mode)"
+            assert call_args['exists'] is True
+            assert call_args['details']['component_id'] == 'test-component-id'
+
+        # Test check mode for state=absent, component doesn't exist
+        mock_module.exit_json.reset_mock()
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+
+            mock_ansible_module.return_value = mock_module
+            mock_repo_details.return_value = ('raw', 'hosted')
+            mock_check_exists.return_value = (False, None)
+
+            main()
+
+            # Verify check mode behavior for non-existent component
+            mock_module.exit_json.assert_called_once()
+            call_args = mock_module.exit_json.call_args[1]
+            assert call_args['changed'] is False
+            assert call_args['msg'] == "Component does not exist in repository"
+            assert not call_args['exists']
