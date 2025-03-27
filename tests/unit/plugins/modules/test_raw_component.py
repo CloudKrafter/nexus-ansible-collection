@@ -11,7 +11,6 @@ __metaclass__ = type
 
 from unittest.mock import MagicMock, patch
 import pytest
-import json
 from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import (
     perform_upload
 )

@@ -112,6 +112,7 @@ from ansible.module_utils.urls import (
 from ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils import (
     split_repository_url,
     create_auth_headers,
+    build_upload_url,
     get_repository_details,
     check_component_exists,
     RepositoryError,

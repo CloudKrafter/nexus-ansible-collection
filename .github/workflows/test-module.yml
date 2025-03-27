@@ -35,7 +35,7 @@ jobs:
       - name: Run Sanity Tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test sanity plugins/modules/ tests/
+          ansible-test sanity plugins/modules/ plugins/module_utils/ tests/
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
