@@ -146,16 +146,16 @@ jobs:
         run: |
           timeout 300 bash -c 'until curl -f http://localhost:8081/service/rest/v1/status; do sleep 5; done'
 
-      - name: Get initial admin password
+      - name: Change initial admin password
         run: |
           ADMIN_PASS=$(docker exec $(docker ps -q) cat /nexus-data/admin.password)
-          echo "NEXUS_ADMIN_PASSWORD=${ADMIN_PASS}" >> $GITHUB_ENV
-      
+          curl -u admin:$ADMIN_PASS -X PUT -H "Content-Type: application/json" -d '{"changeme"}' http://localhost:8081/service/rest/v1/security/users/admin/change-password
+
       - name: Run integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
           echo "NEXUS_ADMIN_PASSWORD=${{ env.NEXUS_ADMIN_PASSWORD }}"
-          ansible-test integration raw_component --docker default --coverage --docker-network nexus --continue-on-error -v
+          ansible-test integration raw_component --docker default --coverage --continue-on-error -v
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'

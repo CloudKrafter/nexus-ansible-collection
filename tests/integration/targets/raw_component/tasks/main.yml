@@ -1,9 +1,11 @@
-# get info from http://localhost:8081/service/rest/v1/status
 - name: get info
   uri:
-    url: http://localhost:8081/service/rest/v1/status
+    url: http://localhost:8081/service/rest/v1/status/check
     method: GET
     return_content: yes
+    url_username: admin
+    url_password: changeme
+    validate_certs: no
   register: nexus_info
 
 - name: debug
