@@ -9,6 +9,7 @@ on:
 
 jobs:
   module:
+    name: Sanity & Unit Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -99,53 +100,6 @@ jobs:
           flags: unittests
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      # - name: Run Download Module for latest
-      #   run: |
-      #     cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-      #     ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=latest dest=/tmp/nexus.tar.gz' localhost --check
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
-      
-      # - name: Run Download Module for specific version
-      #   run: |
-      #     cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-      #     ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=present version=3.77.1-01 dest=/tmp/nexus.tar.gz' localhost --check
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
-
-      # - name: Run playbook in check mode
-      #   run: |
-      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml --check
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
-
-      # - name: Run playbook
-      #   run: |
-      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
-
-      # - name: Run playbook in check mode (Idempotance check)
-      #   run: |
-      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml --check
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
-
-      # - name: Run playbook (Idempotance check)
-      #   run: |
-      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
 
   integration:
     name: Integration Tests
@@ -182,7 +136,33 @@ jobs:
       - name: Run integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test integration download --docker default
+          ansible-test integration download --docker default --coverage
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
+
+      - name: Generate code coverage report
+        run: |
+          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+          ansible-test coverage xml
+
+      - name: Copy test output files
+        run: |
+          mkdir -p /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
+          cp -r /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus/tests/output/* /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          directory: /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
+          # files: reports/coverage.xml
+          slug: CloudKrafter/nexus-ansible-collection
+          flags: integrationtests
+          token: ${{ secrets.CODECOV_TOKEN }}
