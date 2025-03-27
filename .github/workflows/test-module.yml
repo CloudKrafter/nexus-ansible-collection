@@ -35,7 +35,7 @@ jobs:
       - name: Run Sanity Tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test sanity plugins/modules/ plugins/module_utils/ tests/
+          ansible-test sanity plugins/modules/ plugins/module_utils/ tests/ --docker default
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
@@ -99,50 +99,90 @@ jobs:
           flags: unittests
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - name: Run Download Module for latest
-        run: |
-          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=latest dest=/tmp/nexus.tar.gz' localhost --check
-        env:
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
+      # - name: Run Download Module for latest
+      #   run: |
+      #     cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+      #     ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=latest dest=/tmp/nexus.tar.gz' localhost --check
+      #   env:
+      #     PY_COLORS: '1'
+      #     ANSIBLE_FORCE_COLOR: '1'
       
-      - name: Run Download Module for specific version
+      # - name: Run Download Module for specific version
+      #   run: |
+      #     cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+      #     ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=present version=3.77.1-01 dest=/tmp/nexus.tar.gz' localhost --check
+      #   env:
+      #     PY_COLORS: '1'
+      #     ANSIBLE_FORCE_COLOR: '1'
+
+      # - name: Run playbook in check mode
+      #   run: |
+      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
+      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml --check
+      #   env:
+      #     PY_COLORS: '1'
+      #     ANSIBLE_FORCE_COLOR: '1'
+
+      # - name: Run playbook
+      #   run: |
+      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
+      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml
+      #   env:
+      #     PY_COLORS: '1'
+      #     ANSIBLE_FORCE_COLOR: '1'
+
+      # - name: Run playbook in check mode (Idempotance check)
+      #   run: |
+      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
+      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml --check
+      #   env:
+      #     PY_COLORS: '1'
+      #     ANSIBLE_FORCE_COLOR: '1'
+
+      # - name: Run playbook (Idempotance check)
+      #   run: |
+      #     cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
+      #     PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml
+      #   env:
+      #     PY_COLORS: '1'
+      #     ANSIBLE_FORCE_COLOR: '1'
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: module
+
+    # services:
+    #   nexus:
+    #     image: sonatype/nexus3:latest
+    #     ports:
+    #       - 8081:8081
+    #     options: >-
+    #       --health-cmd "curl -f http://localhost:8081/service/rest/v1/status"
+    #       --health-interval 30s
+    #       --health-timeout 10s
+    #       --health-retries 5
+    #       --health-start-period 60s
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          ansible-galaxy collection install . --force
+
+      - name: Run integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ANSIBLE_LIBRARY=./plugins/modules ansible -m download -a 'state=present version=3.77.1-01 dest=/tmp/nexus.tar.gz' localhost --check
-        env:
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
-
-      - name: Run playbook in check mode
-        run: |
-          cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-          PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml --check
-        env:
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
-
-      - name: Run playbook
-        run: |
-          cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-          PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml
-        env:
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
-
-      - name: Run playbook in check mode (Idempotance check)
-        run: |
-          cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-          PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml --check
-        env:
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
-
-      - name: Run playbook (Idempotance check)
-        run: |
-          cd /home/runner/work/nexus-ansible-collection/nexus-ansible-collection
-          PYTHONPATH=$PWD ANSIBLE_LIBRARY=$PWD/plugins/modules ansible-playbook tests/local_test.yml
+          ansible-test integration download --docker default
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
