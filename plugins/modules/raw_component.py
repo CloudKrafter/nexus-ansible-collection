@@ -38,8 +38,8 @@ options:
     aliases: [ directory ]
   src:
     description:
-      - Path to the file to be uploaded.
-    required: true
+      - Path to the file to be uploaded. (required if state is present).
+    required: false
     type: path
     aliases: [ file ]
   state:
