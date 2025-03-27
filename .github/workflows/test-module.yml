@@ -7,6 +7,9 @@ on:
       - review_requested
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   module:
     name: Sanity & Unit Tests
@@ -25,6 +28,7 @@ jobs:
             3.10
             3.11
             3.12
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -65,6 +69,7 @@ jobs:
           name: unit-test-results
           path: |
             /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
+          retention-days: 5
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
@@ -112,12 +117,12 @@ jobs:
         image: sonatype/nexus3:latest
         ports:
           - 8081:8081
-        options: >-
-          --health-cmd "curl -f http://localhost:8081/service/rest/v1/status"
-          --health-interval 30s
-          --health-timeout 10s
-          --health-retries 5
-          --health-start-period 60s
+        # options: >-
+        #   --health-cmd "curl -f http://localhost:8081/service/rest/v1/status"
+        #   --health-interval 30s
+        #   --health-timeout 10s
+        #   --health-retries 5
+        #   --health-start-period 60s
 
     steps:
       - name: Checkout
@@ -127,6 +132,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
@@ -149,7 +155,53 @@ jobs:
       - name: Change initial admin password
         run: |
           ADMIN_PASS=$(docker exec $(docker ps -q) cat /nexus-data/admin.password)
-          curl -u admin:$ADMIN_PASS -X PUT -H "Content-Type: application/json" -d '{"changeme"}' http://localhost:8081/service/rest/v1/security/users/admin/change-password
+          curl -u admin:$ADMIN_PASS -X PUT http://localhost:8081/service/rest/v1/security/users/admin/change-password -H "accept: application/json" -H "Content-Type: text/plain" -d "changeme"
+
+      - name: Get EULA disclaimer
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          DISCLAIMER=$(curl -s http://localhost:8081/service/rest/v1/system/eula \
+            -H 'accept: application/json' \
+            -u admin:changeme | jq -r '.disclaimer')
+          echo "EULA_DISCLAIMER=$DISCLAIMER" >> $GITHUB_ENV
+
+      - name: Accept EULA
+        run: |
+          curl -X POST \
+            'http://localhost:8081/service/rest/v1/system/eula' \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -u admin:changeme \
+            -d "{
+              \"accepted\": true,
+              \"disclaimer\": \"$EULA_DISCLAIMER\"
+            }"
+
+      - name: Create raw repository
+        run: |
+          curl -X POST \
+            'http://localhost:8081/service/rest/v1/repositories/raw/hosted' \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -u admin:changeme \
+            -d '{
+              "name": "raw-hosted",
+              "online": true,
+              "storage": {
+                "blobStoreName": "default",
+                "strictContentTypeValidation": true,
+                "writePolicy": "ALLOW"
+              },
+              "cleanup": {
+                "policyNames": []
+              },
+              "component": {
+                "proprietaryComponents": false
+              },
+              "raw": {
+                "contentDisposition": "ATTACHMENT"
+              }
+            }'
 
       - name: Run integration tests
         run: |
@@ -174,6 +226,7 @@ jobs:
           name: integration-test-results
           path: |
             /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
+          retention-days: 5
 
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() }}
@@ -185,3 +238,17 @@ jobs:
           slug: CloudKrafter/nexus-ansible-collection
           flags: integrationtests
           token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Collect Nexus logs on failure
+        if: failure()
+        run: |
+          mkdir -p /tmp/nexus-logs
+          docker cp $(docker ps -q):/nexus-data/log/ /tmp/nexus-logs/
+
+      - name: Upload Nexus logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-logs
+          path: /tmp/nexus-logs
+          retention-days: 5

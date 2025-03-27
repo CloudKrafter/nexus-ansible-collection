@@ -1,24 +1,16 @@
-- name: get info
-  uri:
-    url: http://localhost:8081/service/rest/v1/status/check
-    method: GET
-    return_content: yes
-    url_username: admin
-    url_password: changeme
-    validate_certs: no
-    force_basic_auth: true
-  register: nexus_info
+- name: Download Latest Nexus with specified Architecture (check mode)
+  cloudkrafter.nexus.download:
+    state: latest
+    dest: /tmp
+    arch: aarch64
+  register: download_latest_nexus
 
-- name: debug
-  debug:
-    var: nexus_info
-
-# - name: Upload artifact
-#   cloudkrafter.nexus.raw_component:
-#     src: /tmp/nexus-latest.tar.gz
-#     dest: /nexus
-#     name: nexus-latest.tar.gz
-#     repository: https://host.docker.internal:9091/repository/raw-hosted
-#     username: admin
-#     password: changeme
-#     validate_certs: false
+- name: Upload artifact
+  cloudkrafter.nexus.raw_component:
+    src: "{{ download_latest_nexus.destination }}"
+    dest: /nexus
+    name: nexus-latest.tar.gz
+    repository: http://localhost:8081/repository/raw-hosted
+    username: admin
+    password: changeme
+    validate_certs: false
