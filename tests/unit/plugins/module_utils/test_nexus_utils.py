@@ -124,7 +124,7 @@ class TestNexusModuleUtils:
         }).encode()
 
         # Test successful retrieval
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.fetch_url') as mock_fetch:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.fetch_url') as mock_fetch:
             mock_fetch.return_value = (mock_response, {'status': 200})
 
             repo_format, repo_type = get_repository_details(
@@ -157,7 +157,7 @@ class TestNexusModuleUtils:
         headers = create_auth_headers(username="user", password="pass")
 
         # Test 404 error
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.fetch_url') as mock_fetch:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.fetch_url') as mock_fetch:
             mock_fetch.return_value = (None, {'status': 404, 'msg': 'Not Found'})
 
             with pytest.raises(RepositoryError, match="Failed to get repository details: HTTP 404 - Not Found"):
@@ -167,14 +167,14 @@ class TestNexusModuleUtils:
         mock_response = MagicMock()
         mock_response.read.return_value = "Invalid JSON"
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.fetch_url') as mock_fetch:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.fetch_url') as mock_fetch:
             mock_fetch.return_value = (mock_response, {'status': 200})
 
             with pytest.raises(RepositoryError, match="Failed to parse repository details"):
                 get_repository_details(repository_name, base_url, headers, mock_module)
 
         # Test connection error
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.fetch_url') as mock_fetch:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.fetch_url') as mock_fetch:
             mock_fetch.return_value = (None, {'status': -1, 'msg': 'Connection refused'})
 
             with pytest.raises(RepositoryError, match="Failed to get repository details: HTTP -1 - Connection refused"):
@@ -211,7 +211,7 @@ class TestNexusModuleUtils:
         timeout = 30
 
         # Test case: Component exists
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
             mock_response = MagicMock()
             mock_response.code = 200
             mock_response.read.return_value = json.dumps({
@@ -243,7 +243,7 @@ class TestNexusModuleUtils:
             )
 
         # Test case: Component doesn't exist
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
             mock_response = MagicMock()
             mock_response.code = 200
             mock_response.read.return_value = json.dumps({
@@ -265,7 +265,7 @@ class TestNexusModuleUtils:
             assert component_id is None
 
         # Test case: HTTP error
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
             mock_response = MagicMock()
             mock_response.code = 404
             mock_open.return_value = mock_response
@@ -282,7 +282,7 @@ class TestNexusModuleUtils:
                 )
 
         # Test case: Connection error
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
             mock_open.side_effect = Exception("Connection refused")
 
             with pytest.raises(ComponentError, match="Error checking component existence: Connection refused"):
@@ -296,6 +296,7 @@ class TestNexusModuleUtils:
                     timeout=timeout
                 )
 
+
     def test_delete_component_by_id(self):
         """Test component deletion by ID"""
         # Setup test data
@@ -306,7 +307,7 @@ class TestNexusModuleUtils:
         timeout = 30
 
         # Test successful deletion
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
             mock_response = MagicMock()
             mock_response.code = 204
             mock_open.return_value = mock_response
@@ -329,7 +330,7 @@ class TestNexusModuleUtils:
             )
 
         # Test failed deletion (HTTP error)
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
             mock_response = MagicMock()
             mock_response.code = 404
             mock_response.read.return_value = b"Component not found"
@@ -345,7 +346,7 @@ class TestNexusModuleUtils:
                 )
 
         # Test connection error
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.open_url') as mock_open:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
             mock_open.side_effect = Exception("Connection refused")
 
             with pytest.raises(ComponentError, match="Deletion failed: Connection refused"):
