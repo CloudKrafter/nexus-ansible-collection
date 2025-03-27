@@ -6,6 +6,7 @@
     url_username: admin
     url_password: changeme
     validate_certs: no
+    force_basic_auth: true
   register: nexus_info
 
 - name: debug
