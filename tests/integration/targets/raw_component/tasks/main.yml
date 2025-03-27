@@ -1,6 +1,6 @@
-- name: show env vars
+- name: Print Nexus Password
   debug:
-    var: ansible_env
+    msg: "Nexus Password is {{ lookup('env', 'NEXUS_ADMIN_PASSWORD') }}"
 
 # - name: Upload artifact
 #   cloudkrafter.nexus.raw_component:
