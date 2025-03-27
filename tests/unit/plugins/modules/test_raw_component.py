@@ -96,16 +96,6 @@ class TestRawComponentModule:
         assert basic_headers_upload['Authorization'].startswith('Basic ')
         assert basic_headers_upload['Content-Type'] == 'multipart/form-data'
 
-        # Test token auth
-        token_headers = create_auth_headers(token="my-token")
-        assert token_headers['Authorization'] == 'Bearer my-token'
-        assert token_headers['Content-Type'] == 'application/json'
-
-        # Test token auth with upload content type
-        token_headers_upload = create_auth_headers(token="my-token", for_upload=True)
-        assert token_headers_upload['Authorization'] == 'Bearer my-token'
-        assert token_headers_upload['Content-Type'] == 'multipart/form-data'
-
         # Test no auth
         no_auth_headers = create_auth_headers()
         assert 'Authorization' not in no_auth_headers
@@ -116,10 +106,6 @@ class TestRawComponentModule:
         assert 'Authorization' not in no_auth_headers_upload
         assert no_auth_headers_upload['Content-Type'] == 'multipart/form-data'
 
-        # Test mutual exclusivity
-        with pytest.raises(ValueError):
-            create_auth_headers(username="user", password="pass", token="token")
-
     def test_get_repository_details(self):
         """Test repository details retrieval"""
         # Setup mock module
@@ -129,7 +115,7 @@ class TestRawComponentModule:
         # Setup test data
         repository_name = "maven-releases"
         base_url = "https://nexus.example.com"
-        headers = {'Authorization': 'Bearer test-token'}
+        headers = create_auth_headers(username="user", password="pass")
 
         # Setup mock response for successful case
         mock_response = MagicMock()
@@ -169,7 +155,7 @@ class TestRawComponentModule:
         # Setup test data
         repository_name = "nonexistent-repo"
         base_url = "https://nexus.example.com"
-        headers = {'Authorization': 'Bearer test-token'}
+        headers = create_auth_headers(username="user", password="pass")
 
         # Test 404 error
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.fetch_url') as mock_fetch:
@@ -221,7 +207,7 @@ class TestRawComponentModule:
         repository_name = "raw-hosted"
         name = "test-component.txt"
         dest = "/dest"
-        headers = {'Authorization': 'Bearer test-token'}
+        headers = create_auth_headers(username="user", password="pass")
         validate_certs = True
         timeout = 30
 
@@ -317,7 +303,7 @@ class TestRawComponentModule:
         url = "https://nexus.example.com/service/rest/v1/components?repository=raw-hosted"
         name = "test-file.txt"
         dest = "/path/to/dest"
-        headers = {'Authorization': 'Bearer test-token'}
+        headers = create_auth_headers(username="user", password="pass")
         validate_certs = True
         timeout = 30
 
@@ -421,8 +407,7 @@ class TestRawComponentModule:
             'validate_certs': False,
             'timeout': 30,
             'username': 'testuser',
-            'password': 'testpass',
-            'token': None
+            'password': 'testpass'
         }
 
         # Mock AnsibleModule
@@ -564,8 +549,7 @@ class TestRawComponentModule:
             'validate_certs': False,
             'timeout': 30,
             'username': 'testuser',
-            'password': 'testpass',
-            'token': None
+            'password': 'testpass'
         }
 
         mock_module = MagicMock()
@@ -580,7 +564,7 @@ class TestRawComponentModule:
         # Setup test data
         base_url = "https://nexus.example.com"
         component_id = "cmF3LWhvc3RlZDo0ZjFiYmNkZA"
-        headers = {'Authorization': 'Bearer test-token'}
+        headers = create_auth_headers(username="user", password="pass")
         validate_certs = True
         timeout = 30
 
@@ -662,8 +646,7 @@ class TestRawComponentModule:
 #             'validate_certs': False,
 #             'timeout': 30,
 #             'username': 'testuser',
-#             'password': 'testpass',
-#             'token': None
+#             'password': 'testpass'
 #         }
 
 #         # Setup mock module

@@ -15,7 +15,7 @@ module: raw_component
 short_description: Upload or delete a component in a RAW repositoy
 description:
   - This module uploads or deletes a given raw component in a Nexus repository.
-  - The module supports basic authentication and token-based authentication.
+  - The module supports basic authentication.
 version_added: "1.21.0"
 options:
   repository:
@@ -65,12 +65,6 @@ options:
       - Password for basic authentication.
     type: str
     required: false
-  token:
-    description:
-        - Token for bearer authentication.
-    type: str
-    required: false
-    aliases: [ usertoken ]
 author:
   - "Brian Veltman (@cloudkrafter)"
 '''
@@ -86,7 +80,6 @@ EXAMPLES = '''
     timeout: 60
     username: user
     password: password
-    token: Nexus-UserToken
 
 - name: Upload a file to the root of a repsitory
   cloudkrafter.nexus.raw_component:
@@ -97,7 +90,6 @@ EXAMPLES = '''
     timeout: 60
     username: user
     password: password
-    token: Nexus-UserToken
 '''
 
 RETURN = '''
@@ -174,14 +166,13 @@ def split_repository_url(repository):
     return base_url, repository_name
 
 
-def create_auth_headers(username=None, password=None, token=None, for_upload=False):
+def create_auth_headers(username=None, password=None, for_upload=False):
     """
     Creates authentication headers for requests
 
     Args:
         username (str, optional): Username for basic auth
         password (str, optional): Password for basic auth
-        token (str, optional): Token for bearer auth
         for_upload (bool): Whether headers are for upload (defaults to False)
 
     Returns:
@@ -199,12 +190,7 @@ def create_auth_headers(username=None, password=None, token=None, for_upload=Fal
     if for_upload:
         headers['Content-Type'] = 'multipart/form-data'
 
-    if token and (username or password):
-        raise ValueError("Token authentication cannot be combined with username/password")
-
-    if token:
-        headers['Authorization'] = f'Bearer {token}'
-    elif username and password:
+    if username and password:
         auth = base64.b64encode(f"{username}:{password}".encode()).decode()
         headers['Authorization'] = f'Basic {auth}'
 
@@ -493,14 +479,12 @@ def main():
         validate_certs=dict(type='bool', required=False, default=True),
         timeout=dict(type='int', required=False, default=120),
         username=dict(type='str', required=False),
-        password=dict(type='str', required=False, no_log=True),
-        token=dict(type='str', aliases=['usertoken'], required=False, no_log=True)
+        password=dict(type='str', required=False, no_log=True)
     )
 
     module = AnsibleModule(
         argument_spec=module_args,
-        supports_check_mode=True,
-        mutually_exclusive=[['token', 'username'], ['token', 'password']]
+        supports_check_mode=True
         # required_if=[['state', 'present', ['src']]]
     )
 
@@ -530,7 +514,6 @@ def main():
         headers = create_auth_headers(
             username=module.params.get('username'),
             password=module.params.get('password'),
-            token=module.params.get('token'),
             for_upload=False
         )
 
@@ -582,7 +565,6 @@ def main():
         upload_headers = create_auth_headers(
             username=module.params.get('username'),
             password=module.params.get('password'),
-            token=module.params.get('token'),
             for_upload=True
         )
 
