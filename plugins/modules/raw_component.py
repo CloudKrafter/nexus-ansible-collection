@@ -42,6 +42,14 @@ options:
     required: true
     type: path
     aliases: [ file ]
+  state:
+    description:
+      - If present, the component will be uploaded if it doesn't exist.
+      - If absent, the component will be deleted if it exists.
+    type: str
+    choices: [ present, absent ]
+    default: present
+    required: false
   validate_certs:
     description:
       - If False, SSL certificates will not be validated.
@@ -70,24 +78,22 @@ author:
 '''
 
 EXAMPLES = '''
-- name: Upload a file to the /nexus directory inside a repsitory
+- name: Upload a file to the /parentDirectory directory inside a repository
   cloudkrafter.nexus.raw_component:
-    name: nexus-343546.tar.gz
+    state: present
+    name: some-package.tar.gz
     repository: https://nexus-instance.local/repository/some-repo
-    dest: /nexus
+    dest: /parentDirectory
     src: /path/to/file-to-be-uploaded.tar.gz
-    validate_certs: false
-    timeout: 60
     username: user
     password: password
 
-- name: Upload a file to the root of a repsitory
+- name: Delete a component from a repository
   cloudkrafter.nexus.raw_component:
-    name: nexus-343546.tar.gz
+    state: absent
+    name: some-package.tar.gz
     repository: https://nexus-instance.local/repository/some-repo
-    src: /path/to/file-to-be-uploaded.tar.gz
-    validate_certs: false
-    timeout: 60
+    dest: /parentDirectory
     username: user
     password: password
 '''
@@ -115,6 +121,7 @@ from ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils imp
     build_upload_url,
     get_repository_details,
     check_component_exists,
+    delete_component_by_id,
     RepositoryError,
     ComponentError
 )
@@ -210,9 +217,10 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
 def main():
     """Main function for the Ansible module"""
     module_args = dict(
+        state=dict(type='str', choices=['present', 'absent'], default='present'),
         repository=dict(type='str', required=True),
         name=dict(type='str', aliases=['filename'], required=True),
-        src=dict(type='path', aliases=['file'], required=True),
+        src=dict(type='path', aliases=['file']),
         dest=dict(type='str', aliases=['directory'], required=False, default='/'),
         validate_certs=dict(type='bool', required=False, default=True),
         timeout=dict(type='int', required=False, default=120),
@@ -222,8 +230,11 @@ def main():
 
     module = AnsibleModule(
         argument_spec=module_args,
-        supports_check_mode=True
-        # required_if=[['state', 'present', ['src']]]
+        supports_check_mode=True,
+        required_if=[
+            ['state', 'present', ['src']],
+            ['state', 'absent', ['name']]
+        ]
     )
 
     result = dict(
@@ -281,51 +292,84 @@ def main():
         if component_id:
             result['details']['component_id'] = component_id
 
-        # Handle check mode and existing components
-        if module.check_mode:
+        # Handle state-based operations
+        if module.params['state'] == 'present':
+            if exists:
+                result.update({
+                    'changed': False,
+                    'msg': "Component already exists in repository"
+                })
+                module.exit_json(**result)
+
+            if module.check_mode:
+                result.update({
+                    'changed': True,
+                    'msg': "Component would be uploaded (check mode)"
+                })
+                module.exit_json(**result)
+
+            # Proceed with upload
+            upload_url = build_upload_url(base_url, repo_name)
+            result['details']['upload_url'] = upload_url
+
+            upload_headers = create_auth_headers(
+                username=module.params.get('username'),
+                password=module.params.get('password'),
+                for_upload=True
+            )
+
+            success, status_code, message = perform_upload(
+                url=upload_url,
+                src=module.params['src'],
+                name=module.params['name'],
+                dest=module.params['dest'],
+                headers=upload_headers,
+                validate_certs=module.params['validate_certs'],
+                timeout=module.params['timeout']
+            )
+
             result.update({
-                'changed': not exists,
-                'msg': f"Component would {'not be uploaded (already exists)' if exists else 'be uploaded'} (check mode)"
+                'changed': success,
+                'status_code': status_code,
+                'msg': "Component upload successful" if success else message
             })
-            module.exit_json(**result)
 
-        if exists:
-            result.update({
-                'changed': False,
-                'msg': "Component already exists in repository"
-            })
-            module.exit_json(**result)
-
-        # Proceed with upload
-        upload_url = build_upload_url(base_url, repo_name)
-        result['details']['upload_url'] = upload_url
-
-        upload_headers = create_auth_headers(
-            username=module.params.get('username'),
-            password=module.params.get('password'),
-            for_upload=True
-        )
-
-        success, status_code, message = perform_upload(
-            url=upload_url,
-            src=module.params['src'],
-            name=module.params['name'],
-            dest=module.params['dest'],
-            headers=upload_headers,
-            validate_certs=module.params['validate_certs'],
-            timeout=module.params['timeout']
-        )
-
-        result.update({
-            'changed': success,
-            'status_code': status_code,
-            'msg': "Component upload successful" if success else message
-        })
-
-        if success:
-            module.exit_json(**result)
+            if success:
+                module.exit_json(**result)
         else:
-            module.fail_json(**result)
+            if not exists:
+                result.update({
+                    'changed': False,
+                    'msg': "Component does not exist in repository"
+                })
+                module.exit_json(**result)
+
+            if module.check_mode:
+                result.update({
+                    'changed': True,
+                    'msg': "Component would have been deleted (if not in check mode)"
+                })
+                module.exit_json(**result)
+
+            # Proceed with deletion
+            if delete_component_by_id(
+                base_url=base_url,
+                component_id=component_id,
+                headers=headers,
+                validate_certs=module.params['validate_certs'],
+                timeout=module.params['timeout']
+            ):
+                result.update({
+                    'changed': True,
+                    'msg': "Component deleted successfully"
+                })
+                module.exit_json(**result)
+            else:
+                result.update({
+                    'changed': False,
+                    'msg': "Failed to delete component"
+                })
+                module.fail_json(**result)
 
     except (RepositoryError, ComponentError) as e:
         result.update({

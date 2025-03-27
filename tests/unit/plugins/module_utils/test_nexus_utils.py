@@ -296,6 +296,52 @@ class TestNexusModuleUtils:
                     timeout=timeout
                 )
 
+    def test_check_component_exists_multiple_items(self):
+        """Test component existence checking with multiple items"""
+        # Setup test data
+        base_url = "https://nexus.example.com"
+        repository_name = "raw-hosted"
+        name = "test-component.txt"
+        dest = "/dest"
+        headers = create_auth_headers(username="user", password="pass")
+        validate_certs = True
+        timeout = 30
+
+        # Test case: Multiple items with one match
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.open_url') as mock_open:
+            mock_response = MagicMock()
+            mock_response.code = 200
+            mock_response.read.return_value = json.dumps({
+                'items': [
+                    {
+                        'path': '/other/path/file.txt',
+                        'id': 'other-id'
+                    },
+                    {
+                        'path': '/dest/test-component.txt',
+                        'id': 'correct-id'
+                    },
+                    {
+                        'path': '/another/path/test-component.txt',
+                        'id': 'another-id'
+                    }
+                ]
+            }).encode()
+            mock_open.return_value = mock_response
+
+            exists, component_id = check_component_exists(
+                base_url=base_url,
+                repository_name=repository_name,
+                name=name,
+                dest=dest,
+                headers=headers,
+                validate_certs=validate_certs,
+                timeout=timeout
+            )
+
+            assert exists is True
+            assert component_id == 'correct-id'
+
     def test_delete_component_by_id(self):
         """Test component deletion by ID"""
         # Setup test data
