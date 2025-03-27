@@ -22,6 +22,9 @@ nexus_plugin_urls: []
 nexus_onboarding_wizard: false
 nexus_java_version: 17
 
+# Community Edition features
+nexus_accept_community_eula: false
+
 # Enable Pro features
 nexus_enable_pro_version: false
 nexus_migration_type: postgres

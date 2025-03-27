@@ -637,3 +637,34 @@
         path: "{{ nexus_data_dir }}/admin.password"
         state: absent
       when: nexus_version is version_compare('3.17.0', '>=')
+
+- name: Get Nexus Community EULA status
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/system/eula"
+    method: GET
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    force_basic_auth: true
+    status_code: 200, 401
+    return_content: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+  register: nexus_api_eula_status
+
+- name: Accept Nexus Community EULA status
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/system/eula"
+    method: POST
+    body_format: 'json'
+    body:
+      accepted: true
+      disclaimer: "{{ nexus_api_eula_status['json']['disclaimer'] }}"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    force_basic_auth: true
+    status_code: 200, 204, 401
+    return_content: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+  register: nexus_api_eula_status
+  when:
+    - nexus_accept_community_eula | bool
+    - not nexus_api_eula_status['json']['accepted'] | bool
