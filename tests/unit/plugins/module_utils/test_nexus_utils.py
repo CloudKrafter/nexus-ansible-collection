@@ -91,7 +91,8 @@ class TestNexusModuleUtils:
         assert basic_headers['Content-Type'] == 'application/json'
 
         # Test basic auth with upload content type
-        basic_headers_upload = create_auth_headers(username="user", password="pass", for_upload=True)
+        basic_headers_upload = create_auth_headers(
+            username="user", password="pass", for_upload=True)
         assert basic_headers_upload['Authorization'].startswith('Basic ')
         assert basic_headers_upload['Content-Type'] == 'multipart/form-data'
 
@@ -158,10 +159,12 @@ class TestNexusModuleUtils:
 
         # Test 404 error
         with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.fetch_url') as mock_fetch:
-            mock_fetch.return_value = (None, {'status': 404, 'msg': 'Not Found'})
+            mock_fetch.return_value = (
+                None, {'status': 404, 'msg': 'Not Found'})
 
             with pytest.raises(RepositoryError, match="Failed to get repository details: HTTP 404 - Not Found"):
-                get_repository_details(repository_name, base_url, headers, mock_module)
+                get_repository_details(
+                    repository_name, base_url, headers, mock_module)
 
         # Test invalid JSON response
         mock_response = MagicMock()
@@ -171,14 +174,17 @@ class TestNexusModuleUtils:
             mock_fetch.return_value = (mock_response, {'status': 200})
 
             with pytest.raises(RepositoryError, match="Failed to parse repository details"):
-                get_repository_details(repository_name, base_url, headers, mock_module)
+                get_repository_details(
+                    repository_name, base_url, headers, mock_module)
 
         # Test connection error
         with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils.fetch_url') as mock_fetch:
-            mock_fetch.return_value = (None, {'status': -1, 'msg': 'Connection refused'})
+            mock_fetch.return_value = (
+                None, {'status': -1, 'msg': 'Connection refused'})
 
             with pytest.raises(RepositoryError, match="Failed to get repository details: HTTP -1 - Connection refused"):
-                get_repository_details(repository_name, base_url, headers, mock_module)
+                get_repository_details(
+                    repository_name, base_url, headers, mock_module)
 
     def test_build_upload_url(self):
         """Test URL construction for uploads"""

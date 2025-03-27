@@ -148,7 +148,8 @@ def get_latest_version(validate_certs=True):
         )
 
         if response.code != 200:
-            raise ValueError(f"API request failed with status code: {response.code}")
+            raise ValueError(
+                f"API request failed with status code: {response.code}")
 
         data = json.loads(response.read().decode('utf-8'))
 
@@ -156,7 +157,8 @@ def get_latest_version(validate_certs=True):
         if not raw_version:
             raise ValueError("No release found in API response")
 
-        version = raw_version[8:] if raw_version.startswith('release-') else raw_version
+        version = raw_version[8:] if raw_version.startswith(
+            'release-') else raw_version
 
         if not is_valid_version(version):
             raise ValueError(f"Invalid version format: {version}")
@@ -305,7 +307,8 @@ def get_download_url(state, version=None, arch=None, base_url=None, validate_cer
 
     try:
         # Get version and valid URLs
-        version = get_latest_version(validate_certs) if state == 'latest' else version
+        version = get_latest_version(
+            validate_certs) if state == 'latest' else version
         valid_urls = get_valid_download_urls(
             version,
             arch=arch,
@@ -326,10 +329,12 @@ def get_download_url(state, version=None, arch=None, base_url=None, validate_cer
 
         # Try each pattern in order
         for pattern in patterns:
-            matches = [url for url in valid_urls if re.search(pattern, url, re.IGNORECASE)]
+            matches = [url for url in valid_urls if re.search(
+                pattern, url, re.IGNORECASE)]
             if matches:
                 if len(matches) > 1:
-                    raise ValueError(f"Multiple matches found for pattern {pattern}")
+                    raise ValueError(
+                        f"Multiple matches found for pattern {pattern}")
                 return matches[0]
 
         # If no pattern matches but we have exactly one valid URL, return it
@@ -361,10 +366,12 @@ def download_file(module, url, dest, validate_certs=True):
         try:
             os.makedirs(dest)
         except Exception as e:
-            module.fail_json(msg=f"Failed to create destination directory: {str(e)}")
+            module.fail_json(
+                msg=f"Failed to create destination directory: {str(e)}")
 
     # Download the file
-    response, info = fetch_url(module, url, method="GET", timeout=module.params['timeout'])
+    response, info = fetch_url(
+        module, url, method="GET", timeout=module.params['timeout'])
     status_code = info['status']
 
     if info['status'] != 200:
@@ -449,15 +456,19 @@ def main():
         if url:
             base_url = url.rstrip('/') + '/'
             actual_version = version  # We know version is set when url is used
-            valid_urls = get_valid_download_urls(actual_version, arch=arch, validate_certs=validate_certs, base_url=base_url)
+            valid_urls = get_valid_download_urls(
+                actual_version, arch=arch, validate_certs=validate_certs, base_url=base_url)
             if len(valid_urls) == 1:
                 download_url = valid_urls[0]
             else:
-                download_url = get_download_url(state, actual_version, arch=arch, validate_certs=validate_certs, base_url=base_url)
+                download_url = get_download_url(
+                    state, actual_version, arch=arch, validate_certs=validate_certs, base_url=base_url)
         else:
             # For non-custom URLs, get latest version if needed
-            actual_version = version if state == 'present' else get_latest_version(validate_certs)
-            download_url = get_download_url(state, actual_version, arch=arch, validate_certs=validate_certs)
+            actual_version = version if state == 'present' else get_latest_version(
+                validate_certs)
+            download_url = get_download_url(
+                state, actual_version, arch=arch, validate_certs=validate_certs)
 
         if not download_url:
             raise ValueError("Failed to determine download URL")
@@ -481,7 +492,8 @@ def main():
             return
 
         # Perform the actual download
-        changed, msg, destination, status_code = download_file(module, download_url, dest, validate_certs)
+        changed, msg, destination, status_code = download_file(
+            module, download_url, dest, validate_certs)
 
         module.exit_json(
             changed=changed,

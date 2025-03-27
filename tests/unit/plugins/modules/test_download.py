@@ -123,7 +123,8 @@ class TestNexusDownloadModule:
         mock_open_url.reset_mock()
         mock_invalid_version_response = MagicMock()
         mock_invalid_version_response.code = 200
-        mock_invalid_version_response.read.return_value = b'{"name": "release-invalid"}'  # Invalid version format
+        # Invalid version format
+        mock_invalid_version_response.read.return_value = b'{"name": "release-invalid"}'
         mock_open_url.return_value = mock_invalid_version_response
 
         # Test invalid version format
@@ -134,7 +135,8 @@ class TestNexusDownloadModule:
         mock_open_url.reset_mock()
         mock_non_release_response = MagicMock()
         mock_non_release_response.code = 200
-        mock_non_release_response.read.return_value = b'{"name": "non-release-3.78.0-01"}'  # Wrong prefix
+        # Wrong prefix
+        mock_non_release_response.read.return_value = b'{"name": "non-release-3.78.0-01"}'
         mock_open_url.return_value = mock_non_release_response
 
         # Test non-release version format
@@ -175,7 +177,8 @@ class TestNexusDownloadModule:
 
         # Reset and setup download mock
         mock_download.reset_mock()
-        mock_download.return_value = (True, "File downloaded successfully", "/tmp/nexus.tar.gz", 200)
+        mock_download.return_value = (
+            True, "File downloaded successfully", "/tmp/nexus.tar.gz", 200)
 
         # Setup URL mock
         mock_get_url.reset_mock()
@@ -293,7 +296,8 @@ def test_validate_download_url(mock_open_url):
 
     # Test valid URL
     mock_open_url.return_value = mock_response_valid
-    is_valid, status_code = validate_download_url("https://download.sonatype.com/nexus/3/test.tar.gz")
+    is_valid, status_code = validate_download_url(
+        "https://download.sonatype.com/nexus/3/test.tar.gz")
     assert is_valid is True
     assert status_code == 200
 
@@ -302,7 +306,8 @@ def test_validate_download_url(mock_open_url):
     mock_open_url.side_effect = Exception("404 Not Found")
 
     # Test invalid URL
-    is_valid, status_code = validate_download_url("https://download.sonatype.com/nexus/3/nonexistent.tar.gz")
+    is_valid, status_code = validate_download_url(
+        "https://download.sonatype.com/nexus/3/nonexistent.tar.gz")
     assert is_valid is False
     assert status_code is None
 
@@ -329,7 +334,8 @@ def test_get_valid_download_urls(mock_validate):
 
     # Test successful case
     base_url = "https://download.sonatype.com/nexus/3/"
-    result = get_valid_download_urls('3.78.1-02', arch='aarch64', base_url=base_url)
+    result = get_valid_download_urls(
+        '3.78.1-02', arch='aarch64', base_url=base_url)
 
     # Verify we got valid URLs
     assert len(result) == 2
@@ -361,7 +367,8 @@ def test_main(mock_module, mock_get_latest, mock_get_url, mock_download):
     module_instance = setup_ansible_module_mock(mock_module)
     mock_get_latest.return_value = '3.78.0-01'
     mock_get_url.return_value = 'https://example.com/nexus-3.78.0-01-unix.tar.gz'
-    mock_download.return_value = (True, "File downloaded successfully", "/tmp/nexus.tar.gz", 200)
+    mock_download.return_value = (
+        True, "File downloaded successfully", "/tmp/nexus.tar.gz", 200)
 
     #################################
     # Test state=present with version
@@ -440,7 +447,8 @@ def test_main(mock_module, mock_get_latest, mock_get_url, mock_download):
     # Setup mock for get_valid_download_urls
     with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.download.get_valid_download_urls') as mock_get_valid_urls:
         # Test single URL case
-        mock_get_valid_urls.return_value = ['http://custom.example.com/nexus-3.78.0-01-unix.tar.gz']
+        mock_get_valid_urls.return_value = [
+            'http://custom.example.com/nexus-3.78.0-01-unix.tar.gz']
         module_instance.params = {
             'state': 'present',
             'version': '3.78.0-01',
@@ -639,7 +647,8 @@ def test_download_file(mock_fetch, mock_os, tmp_path):
     # Reset mocks for write failure test
     mock_os.reset_mock()
     mock_fetch.reset_mock()
-    mock_os.path.exists.side_effect = [False, False]  # File and dir don't exist
+    mock_os.path.exists.side_effect = [
+        False, False]  # File and dir don't exist
     mock_response = MagicMock()
     mock_response.read.return_value = b"test content"
     mock_fetch.return_value = (mock_response, {'status': 200})
@@ -681,7 +690,8 @@ def test_url_resolution(mock_open_url, mock_get_latest, mock_get_url):
     mock_response = MagicMock()
     mock_response.code = 200
     mock_open_url.return_value = mock_response
-    mock_open_url.exceptions = type('Exceptions', (), {'RequestException': Exception})
+    mock_open_url.exceptions = type(
+        'Exceptions', (), {'RequestException': Exception})
 
     # Setup version and URL mocks
     mock_get_latest.return_value = '3.78.0-01'
@@ -716,7 +726,8 @@ def test_error_handling(mock_get_valid_urls, mock_validate, mock_open_url):
 
     # Test directory creation failure
     module = MagicMock()
-    module.fail_json = MagicMock(side_effect=Exception("Failed to create directory"))
+    module.fail_json = MagicMock(
+        side_effect=Exception("Failed to create directory"))
 
     with pytest.raises(Exception, match="Failed to create directory"):
         download_file(
@@ -747,7 +758,8 @@ def test_get_download_url(mock_get_valid_urls):
     #################################
     # Test successful case with single URL
     #################################
-    mock_get_valid_urls.return_value = ['https://example.com/nexus-3.78.0-01-unix.tar.gz']
+    mock_get_valid_urls.return_value = [
+        'https://example.com/nexus-3.78.0-01-unix.tar.gz']
 
     result = get_download_url(
         state='present',
@@ -805,7 +817,8 @@ def test_get_download_url(mock_get_valid_urls):
     #################################
     # Test custom base URL
     #################################
-    mock_get_valid_urls.return_value = ['https://custom.example.com/nexus-3.78.0-01-unix.tar.gz']
+    mock_get_valid_urls.return_value = [
+        'https://custom.example.com/nexus-3.78.0-01-unix.tar.gz']
 
     result = get_download_url(
         state='present',
@@ -837,7 +850,8 @@ def test_get_download_url(mock_get_valid_urls):
     # Test single URL with no pattern match
     #################################
     mock_get_valid_urls.return_value = [
-        'https://example.com/nexus-special-3.78.0-01.tar.gz'  # URL doesn't match any pattern
+        # URL doesn't match any pattern
+        'https://example.com/nexus-special-3.78.0-01.tar.gz'
     ]
 
     # Should return the single URL even though it doesn't match patterns

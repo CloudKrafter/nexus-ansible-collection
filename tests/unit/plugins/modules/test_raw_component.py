@@ -158,7 +158,8 @@ class TestRawComponentModule:
 
                     # Mock perform_upload
                     with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.perform_upload') as mock_upload:
-                        mock_upload.return_value = (True, 201, "Upload successful")
+                        mock_upload.return_value = (
+                            True, 201, "Upload successful")
 
                         # Test successful upload
                         from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import main
@@ -182,7 +183,8 @@ class TestRawComponentModule:
                 mock_repo_details.return_value = ('raw', 'hosted')
 
                 with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
-                    mock_check_exists.return_value = (True, 'cmF3LWhvc3RlZDo0ZjFiYmNkZA')
+                    mock_check_exists.return_value = (
+                        True, 'cmF3LWhvc3RlZDo0ZjFiYmNkZA')
 
                     main()
 
@@ -271,7 +273,8 @@ class TestRawComponentModule:
             mock_ansible_module.return_value = mock_module
 
             with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details:
-                mock_repo_details.side_effect = RepositoryError("Repository not found")
+                mock_repo_details.side_effect = RepositoryError(
+                    "Repository not found")
 
                 main()
 
@@ -288,9 +291,10 @@ class TestRawComponentModule:
 
         # Test RepositoryError handling
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule', return_value=mock_module), \
-             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details:
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details:
 
-            mock_repo_details.side_effect = RepositoryError("Repository not accessible")
+            mock_repo_details.side_effect = RepositoryError(
+                "Repository not accessible")
 
             from ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component import main
             main()
@@ -306,10 +310,11 @@ class TestRawComponentModule:
 
         # Test ComponentError handling
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule', return_value=mock_module), \
-             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details', return_value=('raw', 'hosted')), \
-             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check:
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details', return_value=('raw', 'hosted')), \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check:
 
-            mock_check.side_effect = ComponentError("Failed to check component")
+            mock_check.side_effect = ComponentError(
+                "Failed to check component")
 
             main()
 
@@ -324,9 +329,10 @@ class TestRawComponentModule:
 
         # Test unexpected exception handling
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule', return_value=mock_module), \
-             patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details:
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details:
 
-            mock_repo_details.side_effect = Exception("Unexpected error occurred")
+            mock_repo_details.side_effect = Exception(
+                "Unexpected error occurred")
 
             main()
 
@@ -386,8 +392,8 @@ class TestRawComponentModule:
         mock_module.check_mode = True
 
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
 
             mock_ansible_module.return_value = mock_module
             mock_repo_details.return_value = ('raw', 'hosted')
@@ -405,8 +411,8 @@ class TestRawComponentModule:
         # Test check mode for state=present, component exists
         mock_module.exit_json.reset_mock()
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
 
             mock_ansible_module.return_value = mock_module
             mock_repo_details.return_value = ('raw', 'hosted')
@@ -426,8 +432,8 @@ class TestRawComponentModule:
         mock_module.params['state'] = 'absent'
         mock_module.exit_json.reset_mock()
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
 
             mock_ansible_module.return_value = mock_module
             mock_repo_details.return_value = ('raw', 'hosted')
@@ -446,8 +452,8 @@ class TestRawComponentModule:
         # Test check mode for state=absent, component doesn't exist
         mock_module.exit_json.reset_mock()
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.AnsibleModule') as mock_ansible_module, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
-            patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.get_repository_details') as mock_repo_details, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.raw_component.check_component_exists') as mock_check_exists:
 
             mock_ansible_module.return_value = mock_module
             mock_repo_details.return_value = ('raw', 'hosted')

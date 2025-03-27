@@ -165,19 +165,22 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
 
             # Add directory field
             payload.append(f'--{boundary}')
-            payload.append('Content-Disposition: form-data; name="raw.directory"')
+            payload.append(
+                'Content-Disposition: form-data; name="raw.directory"')
             payload.append('')
             payload.append(dest)
 
             # Add filename field
             payload.append(f'--{boundary}')
-            payload.append('Content-Disposition: form-data; name="raw.asset1.filename"')
+            payload.append(
+                'Content-Disposition: form-data; name="raw.asset1.filename"')
             payload.append('')
             payload.append(name)
 
             # Add file content
             payload.append(f'--{boundary}')
-            payload.append(f'Content-Disposition: form-data; name="raw.asset1"; filename="{name}"')
+            payload.append(
+                f'Content-Disposition: form-data; name="raw.asset1"; filename="{name}"')
             payload.append('Content-Type: application/octet-stream')
             payload.append('')
 
@@ -185,7 +188,8 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
             payload_bytes = (crlf.join(payload) + crlf).encode('utf-8')
 
             # Add file content and final boundary
-            post_data = payload_bytes + file_data + f'{crlf}--{boundary}--{crlf}'.encode('utf-8')
+            post_data = payload_bytes + file_data + \
+                f'{crlf}--{boundary}--{crlf}'.encode('utf-8')
 
             # Update headers for multipart upload
             upload_headers = headers.copy()
@@ -217,11 +221,13 @@ def perform_upload(url, src, name, dest, headers, validate_certs, timeout):
 def main():
     """Main function for the Ansible module"""
     module_args = dict(
-        state=dict(type='str', choices=['present', 'absent'], default='present'),
+        state=dict(type='str', choices=[
+                   'present', 'absent'], default='present'),
         repository=dict(type='str', required=True),
         name=dict(type='str', aliases=['filename'], required=True),
         src=dict(type='path', aliases=['file']),
-        dest=dict(type='str', aliases=['directory'], required=False, default='/'),
+        dest=dict(type='str', aliases=['directory'],
+                  required=False, default='/'),
         validate_certs=dict(type='bool', required=False, default=True),
         timeout=dict(type='int', required=False, default=120),
         username=dict(type='str', required=False),
@@ -350,7 +356,6 @@ def main():
                     'msg': "Component would have been deleted (if not in check mode)"
                 })
                 return module.exit_json(**result)
-
 
             # Proceed with deletion
             if delete_component_by_id(
