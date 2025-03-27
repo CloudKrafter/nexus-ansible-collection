@@ -31,17 +31,11 @@
     dest: /tmp
     arch: invalid_arch
   register: missing_state
-  ignore_errors: true
-
-- name: debug
-  debug:
-    var: missing_state
 
 - name: invalid
   assert:
     that:
-      - download_invalid_arch is failed
-      - download_invalid_arch,msg == "Invalid state:"
+      - missing_state.failed
 
 # - name: Download Latest Nexus
 #   cloudkrafter.nexus.download:

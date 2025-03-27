@@ -1,0 +1,13 @@
+- name: show env vars
+  debug:
+    var: ansible_env
+
+# - name: Upload artifact
+#   cloudkrafter.nexus.raw_component:
+#     src: /tmp/nexus-latest.tar.gz
+#     dest: /nexus
+#     name: nexus-latest.tar.gz
+#     repository: https://host.docker.internal:9091/repository/raw-hosted
+#     username: admin
+#     password: changeme
+#     validate_certs: false

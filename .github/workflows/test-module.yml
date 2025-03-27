@@ -10,6 +10,7 @@ on:
 jobs:
   module:
     name: Sanity & Unit Tests
+    #if: github.event_name == 'workflow_dispatch' || contains(github.event.commits.*.modified, 'plugins/') || contains(github.event.commits.*.modified, 'tests/unit/')
     runs-on: ubuntu-latest
 
     steps:
@@ -145,6 +146,22 @@ jobs:
       - name: Wait for Nexus startup
         run: |
           timeout 300 bash -c 'until curl -f http://localhost:8081/service/rest/v1/status; do sleep 5; done'
+
+    - name: Get initial admin password
+        run: |
+          ADMIN_PASS=$(docker exec $(docker ps -q) cat /nexus-data/admin.password)
+          echo "NEXUS_ADMIN_PASSWORD=${ADMIN_PASS}" >> $GITHUB_ENV
+    
+    - name: Run integration tests
+        run: |
+          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+          ansible-test integration raw_component --docker default --coverage --continue-on-error -v
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
+          NEXUS_URL: 'http://localhost:8081'
+          NEXUS_USERNAME: 'admin'
+          NEXUS_PASSWORD: ${{ env.NEXUS_ADMIN_PASSWORD }}
 
       - name: Generate code coverage report
         run: |
