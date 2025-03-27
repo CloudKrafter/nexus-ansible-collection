@@ -10,7 +10,6 @@ on:
 jobs:
   module:
     name: Sanity & Unit Tests
-    #if: github.event_name == 'workflow_dispatch' || contains(github.event.commits.*.modified, 'plugins/') || contains(github.event.commits.*.modified, 'tests/unit/')
     runs-on: ubuntu-latest
 
     steps:
@@ -155,7 +154,8 @@ jobs:
       - name: Run integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test integration raw_component --docker default --coverage --continue-on-error -v
+          echo "NEXUS_ADMIN_PASSWORD=${{ env.NEXUS_ADMIN_PASSWORD }}"
+          ansible-test integration raw_component --docker default --coverage --docker-network nexus --continue-on-error -v
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'

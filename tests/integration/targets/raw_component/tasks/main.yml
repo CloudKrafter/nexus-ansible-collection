@@ -1,6 +1,14 @@
-- name: Print Nexus Password
+# get info from http://localhost:8081/service/rest/v1/status
+- name: get info
+  uri:
+    url: http://localhost:8081/service/rest/v1/status
+    method: GET
+    return_content: yes
+  register: nexus_info
+
+- name: debug
   debug:
-    msg: "Nexus Password is {{ lookup('env', 'NEXUS_ADMIN_PASSWORD') }}"
+    var: nexus_info
 
 # - name: Upload artifact
 #   cloudkrafter.nexus.raw_component:
