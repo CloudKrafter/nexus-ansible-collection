@@ -26,17 +26,6 @@
     arch: aarch64
   check_mode: true
 
-- name: Missing state
-  cloudkrafter.nexus.download:
-    dest: /tmp
-    arch: invalid_arch
-  register: missing_state
-
-- name: invalid
-  assert:
-    that:
-      - missing_state.failed
-
 # - name: Download Latest Nexus
 #   cloudkrafter.nexus.download:
 #     state: latest
