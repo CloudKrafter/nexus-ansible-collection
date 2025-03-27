@@ -62,7 +62,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: unit-test-results
           path: |
             /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
 
@@ -91,6 +91,7 @@ jobs:
           verbose: true
 
       - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: true
@@ -153,11 +154,12 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: test-results
+          name: integration-test-results
           path: |
             /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
 
       - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v5
         with:
           fail_ci_if_error: true
