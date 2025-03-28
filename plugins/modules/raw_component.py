@@ -12,7 +12,7 @@ __metaclass__ = type
 DOCUMENTATION = '''
 ---
 module: raw_component
-short_description: Upload or delete a component in a RAW repositoy
+short_description: Upload or delete a component in a RAW repository
 description:
   - This module uploads or deletes a given raw component in a Nexus repository.
   - The module supports basic authentication.
