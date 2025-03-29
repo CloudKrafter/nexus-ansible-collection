@@ -9,6 +9,7 @@
   ansible.builtin.systemd:
     name: nexus.service
     state: restarted
+    enabled: true
     no_block: true
   listen: nexus-service-restart
   when: ansible_service_mgr == 'systemd'
@@ -17,6 +18,7 @@
   ansible.builtin.service:
     name: nexus
     state: restarted
+    enabled: true
   listen: nexus-service-restart
   when: ansible_service_mgr != 'systemd'
 
@@ -24,6 +26,7 @@
   ansible.builtin.systemd:
     name: nexus.service
     state: stopped
+    enabled: false
   listen: nexus-service-stop
   when: nexus_systemd_service_file.stat.exists
 
@@ -31,6 +34,7 @@
   ansible.builtin.service:
     name: nexus
     state: stopped
+    enabled: false
   listen: nexus-service-stop
   when: nexus_sysv_service_file.stat.exists
 
