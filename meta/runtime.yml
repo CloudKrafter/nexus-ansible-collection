@@ -1,8 +1,2 @@
 ---
 requires_ansible: '>=2.9.10'
-
-requires_ansible_lib:
-  beautifulsoup4:
-    version_required: '>=4.9.0'
-  packaging:
-    version_required: '>=20.0'
