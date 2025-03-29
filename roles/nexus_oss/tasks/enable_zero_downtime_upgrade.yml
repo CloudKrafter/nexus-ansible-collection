@@ -103,7 +103,7 @@
     method: POST
     validate_certs: "{{ nexus_api_validate_certs }}"
   tags: nexus-upgrade
-  when: __nexus_db_migration__.json['state'] is "MIGRATION_REQUIRED"
+  when: __nexus_db_migration__.json['state'] == "MIGRATION_REQUIRED"
 
 - name: Check database migration status
   ansible.builtin.uri:
@@ -116,12 +116,12 @@
     validate_certs: "{{ nexus_api_validate_certs }}"
   register: __nexus_db_migration_status__
   until: >-
-    __nexus_db_migration_status__.json['state'] is "MIGRATION_SUCCEED" or
-    __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED" or
-    __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED_RETRYABLE"
+    __nexus_db_migration_status__.json['state'] == "MIGRATION_SUCCEED" or
+    __nexus_db_migration_status__.json['state'] == "MIGRATION_FAILED" or
+    __nexus_db_migration_status__.json['state'] == "MIGRATION_FAILED_RETRYABLE"
   retries: "{{ nexus_api_availability_retries }}"
   delay: "{{ nexus_api_availability_delay }}"
   tags: nexus-upgrade
   failed_when:
-    - __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED"
-    - __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED_RETRYABLE"
+    - __nexus_db_migration_status__.json['state'] == "MIGRATION_FAILED"
+    - __nexus_db_migration_status__.json['state'] == "MIGRATION_FAILED_RETRYABLE"
