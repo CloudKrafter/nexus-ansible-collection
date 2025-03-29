@@ -25,6 +25,8 @@ nexus_java_version: 17
 # Community Edition features
 nexus_accept_community_eula: false
 
+nexus_ssl_truststore: []
+
 # Enable Pro features
 nexus_enable_pro_version: false
 nexus_migration_type: postgres
