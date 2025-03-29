@@ -59,7 +59,7 @@
 - name: Print info about detected version to use
   vars:
     version_info: |-
-      Used version: {{ nexus_version }}
+      Desired version: {{ nexus_version }}
       Java version: {{ nexus_java_version | default(17) }}
       Version detected from: {{ nexus_version_detected_from }}
       Upgrade allowed: {{ nexus_upgrade | default(false) | bool }}
