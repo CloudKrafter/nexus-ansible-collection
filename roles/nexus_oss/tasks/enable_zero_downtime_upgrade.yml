@@ -1,0 +1,127 @@
+---
+- name: Enable zero downtime upgrade in {{ nexus_data_dir }}/etc/nexus.properties
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_data_dir }}/etc/nexus.properties"
+    line: "nexus.zero.downtime.enabled={{ nexus_cluster_enabled }}"
+    firstmatch: true
+    insertafter: "EOF"
+    state: present
+  tags: nexus-upgrade
+  notify:
+    - nexus-service-restart
+
+- name: Force restart of nexus service
+  ansible.builtin.meta: flush_handlers
+  tags: nexus-encrypt
+
+- name: Wait for Nexus writable API endpoint to be available
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/status/writable"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 200
+    timeout: "{{ nexus_api_timeout }}"
+  register: __nexus_writable__
+  until: __nexus_writable__.status == 200
+  retries: "{{ nexus_api_availability_retries }}"
+  delay: "{{ nexus_api_availability_delay }}"
+  tags: nexus-upgrade
+
+- name: Get system information
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/beta/system/information"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+  register: __nexus_system_info__
+  until: __nexus_system_info__.status == 200
+  retries: "{{ nexus_api_availability_retries }}"
+  delay: "{{ nexus_api_availability_delay }}"
+  tags: nexus-upgrade
+
+
+- name: Get all node versions
+  ansible.builtin.set_fact:
+    node_versions: "{{ {} }}"
+  tags: nexus-upgrade
+
+- name: Collect versions for each node
+  ansible.builtin.set_fact:
+    node_versions: >-
+      {{ 
+        node_versions | combine({
+          item.key: {
+            'version': item.value.version
+          }
+        })
+      }}
+  loop: "{{ __nexus_system_info__.json['nexus-status'] | dict2items }}"
+  tags: nexus-upgrade
+
+- name: Display version for all nodes
+  ansible.builtin.debug:
+    var: node_versions
+    verbosity: 1
+
+- name: Check if all nodes have the same version
+  ansible.builtin.set_fact:
+    nexus_cluster_ready_for_migration: >-
+      {{
+        node_versions.values() 
+        | map(attribute='version') 
+        | unique 
+        | list 
+        | length == 1
+      }}
+  tags: nexus-upgrade
+
+- name: Check for database schema migration
+# Check /service/rest/v1/clustered/upgrade-database-schema if MIGRATION_REQUIRED
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/clustered/upgrade-database-schema"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+  register: __nexus_db_migration__
+  tags: nexus-upgrade
+  when: nexus_cluster_ready_for_migration
+
+# When migration is required run POST /service/rest/v1/clustered/upgrade-database-schema
+- name: Start database migration
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/clustered/upgrade-database-schema"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    method: POST
+    validate_certs: "{{ nexus_api_validate_certs }}"
+  tags: nexus-upgrade
+  when: __nexus_db_migration__.json['state'] is "MIGRATION_REQUIRED"
+
+- name: Check database migration status
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/clustered/upgrade-database-schema"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+  register: __nexus_db_migration_status__
+  until: >-
+    __nexus_db_migration_status__.json['state'] is "MIGRATION_SUCCEED" or
+    __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED" or
+    __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED_RETRYABLE"
+  retries: "{{ nexus_api_availability_retries }}"
+  delay: "{{ nexus_api_availability_delay }}"
+  tags: nexus-upgrade
+  failed_when:
+    - __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED"
+    - __nexus_db_migration_status__.json['state'] is "MIGRATION_FAILED_RETRYABLE"
