@@ -11,15 +11,16 @@ __metaclass__ = type
 DOCUMENTATION = '''
 ---
 module: nexus_info
-short_description: Gather Nexus system information
+short_description: Gather Nexus system information of a single node
 description:
   - Queries Sonatype Nexus REST API to retrieve system node ID and detailed system information.
-  - Useful for collecting version, edition, and network details about a Nexus node or cluster.
+  - Useful for collecting version, edition, and network details about a single Nexus node.
 version_added: "1.23.0"
 options:
   url:
     description:
       - Base URL of the Nexus instance (e.g. https://localhost:9091).
+      - Do not use an URL that points to a load balancer, as this module is designed to query a single node.
     required: true
     type: str
   username:
@@ -68,7 +69,7 @@ from ansible.module_utils._text import to_native
 
 from ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils import (
     create_auth_headers,
-    RepositoryError
+    NexusError
 )
 import json
 
@@ -87,7 +88,7 @@ def get_node_id(base_url, headers, validate_certs):
         result = json.loads(response.read())
         return result.get('nodeId')
     except Exception as e:
-        raise RepositoryError(f"Failed to get node ID: {to_native(e)}")
+        raise NexusError(f"Failed to get node ID: {to_native(e)}")
 
 
 def get_system_info(base_url, headers, validate_certs):
@@ -103,7 +104,7 @@ def get_system_info(base_url, headers, validate_certs):
         )
         return json.loads(response.read())
     except Exception as e:
-        raise RepositoryError(
+        raise NexusError(
             f"Failed to get system information: {to_native(e)}")
 
 
