@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ansible_collections.cloudkrafter.nexus.plugins.module_utils.repositoryCache import RepositoryCache
+from ansible_collections.cloudkrafter.nexus.plugins.module_utils.repository_cache import RepositoryCache
 
 
 class TestRepositoryCache:
@@ -102,7 +102,7 @@ class TestRepositoryCache:
         mock_response.read.return_value = json.dumps(
             mock_repo_data).encode('utf-8')
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.repositoryCache.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.repository_cache.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
 
             result = cache.get_repository(
@@ -123,7 +123,7 @@ class TestRepositoryCache:
         mock_response.read.return_value = json.dumps(
             mock_repo_data).encode('utf-8')
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.repositoryCache.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.repository_cache.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
 
             result = cache.get_repository(
@@ -161,7 +161,7 @@ class TestRepositoryCache:
         }
         cache._last_update = datetime.now()
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.repositoryCache.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.module_utils.repository_cache.open_url') as mock_open_url:
             mock_open_url.side_effect = Exception("API Error")
 
             with pytest.raises(Exception) as excinfo:
