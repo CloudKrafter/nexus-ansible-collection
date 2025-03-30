@@ -1,0 +1,17 @@
+- name: Gather Nexus information
+  cloudkrafter.nexus.nexus_info:
+    url: http://localhost:8081
+    username: admin
+    password: changeme
+    validate_certs: false
+  register: nexus_data
+
+- name: Print Nexus information
+  debug:
+    msg: |
+      Nexus Version: {{ nexus_data.nexus-status.version }}
+
+- name: Print nexus_data vars
+  debug:
+    var: nexus_data
+    verbosity: 2

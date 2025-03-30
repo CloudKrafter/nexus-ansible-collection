@@ -206,7 +206,7 @@ jobs:
       - name: Run integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test integration raw_component --coverage --continue-on-error -v
+          ansible-test integration nexus_info --coverage --continue-on-error -v
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
