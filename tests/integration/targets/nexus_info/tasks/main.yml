@@ -8,8 +8,7 @@
 
 - name: Print Nexus information
   debug:
-    msg: |
-      Nexus Version: {{ nexus_data.nexus-status.version }}
+    msg: "Nexus version is {{ ansible_facts.nexus_info.node_info['nexus-status'].version }}"
 
 - name: Print nexus_data vars
   debug:

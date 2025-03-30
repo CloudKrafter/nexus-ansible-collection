@@ -37,8 +37,7 @@ class TestNexusInfoModule:
             result = get_node_id(
                 base_url='http://localhost:8081',
                 headers={'accept': 'application/json'},
-                validate_certs=True,
-                timeout=30
+                validate_certs=True
             )
 
             assert result == "1656c370-0cd3-4867-a077-f64ba13e4ec3"
@@ -46,7 +45,6 @@ class TestNexusInfoModule:
                 'http://localhost:8081/service/rest/v1/system/node',
                 headers={'accept': 'application/json'},
                 validate_certs=True,
-                timeout=30,
                 method='GET'
             )
 
@@ -68,8 +66,7 @@ class TestNexusInfoModule:
             result = get_system_info(
                 base_url='http://localhost:8081',
                 headers={'accept': 'application/json'},
-                validate_certs=True,
-                timeout=30
+                validate_certs=True
             )
 
             assert result["nexus-status"]["1656c370-0cd3-4867-a077-f64ba13e4ec3"]["edition"] == "OSS"
@@ -107,8 +104,7 @@ class TestNexusInfoModule:
             'url': 'http://localhost:8081',
             'username': 'admin',
             'password': 'admin123',
-            'validate_certs': True,
-            'timeout': 30
+            'validate_certs': True
         }
 
         mock_module = MagicMock()
@@ -140,8 +136,8 @@ class TestNexusInfoModule:
 
             call_args = mock_module.exit_json.call_args[1]
             assert call_args['changed'] is False
-            assert call_args['nexus_info']['node_id'] == node_id
-            assert call_args['nexus_info']['node_info']['nexus-status']['edition'] == "OSS"
+            assert call_args['ansible_facts']['nexus_info']['node_id'] == node_id
+            assert call_args['ansible_facts']['nexus_info']['node_info']['nexus-status']['edition'] == "OSS"
 
     def test_error_handling(self):
         """Test error handling in API calls"""
@@ -152,8 +148,7 @@ class TestNexusInfoModule:
                 get_node_id(
                     base_url='http://localhost:8081',
                     headers={'accept': 'application/json'},
-                    validate_certs=True,
-                    timeout=30
+                    validate_certs=True
                 )
 
         assert "Failed to get node ID: API Error" in str(excinfo.value)

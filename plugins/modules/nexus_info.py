@@ -73,7 +73,7 @@ from ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils imp
 import json
 
 
-def get_node_id(base_url, headers, validate_certs, timeout):
+def get_node_id(base_url, headers, validate_certs):
     """Get the Nexus node ID."""
     url = f"{base_url}/service/rest/v1/system/node"
 
@@ -82,7 +82,6 @@ def get_node_id(base_url, headers, validate_certs, timeout):
             url,
             headers=headers,
             validate_certs=validate_certs,
-            timeout=timeout,
             method='GET'
         )
         result = json.loads(response.read())
@@ -91,7 +90,7 @@ def get_node_id(base_url, headers, validate_certs, timeout):
         raise RepositoryError(f"Failed to get node ID: {to_native(e)}")
 
 
-def get_system_info(base_url, headers, validate_certs, timeout):
+def get_system_info(base_url, headers, validate_certs):
     """Get detailed system information."""
     url = f"{base_url}/service/rest/beta/system/information"
 
@@ -100,7 +99,6 @@ def get_system_info(base_url, headers, validate_certs, timeout):
             url,
             headers=headers,
             validate_certs=validate_certs,
-            timeout=timeout,
             method='GET'
         )
         return json.loads(response.read())
@@ -142,11 +140,6 @@ def main():
         supports_check_mode=True
     )
 
-    result = dict(
-        changed=False,
-        nexus_info={}
-    )
-
     # Setup authentication
     headers = create_auth_headers(
         username=module.params['username'],
@@ -158,22 +151,26 @@ def main():
         node_id = get_node_id(
             base_url=module.params['url'],
             headers=headers,
-            validate_certs=module.params['validate_certs'],
-            timeout=module.params['timeout']
+            validate_certs=module.params['validate_certs']
         )
 
         # Get system information
         system_info = get_system_info(
             base_url=module.params['url'],
             headers=headers,
-            validate_certs=module.params['validate_certs'],
-            timeout=module.params['timeout']
+            validate_certs=module.params['validate_certs']
         )
 
         # Format information for the specific node
-        result['nexus_info'] = format_node_info(node_id, system_info)
+        node_info = format_node_info(node_id, system_info)
 
-        module.exit_json(**result)
+        # Return facts
+        module.exit_json(
+            changed=False,
+            ansible_facts=dict(
+                nexus_info=node_info
+            )
+        )
 
     except Exception as e:
         module.fail_json(msg=str(e))
