@@ -1,0 +1,31 @@
+- name: Enable user tokens with 90 days expiration
+  cloudkrafter.nexus.user_tokens:
+    state: present
+    expire_tokens: true
+    expiration_days: 90
+    url: http://localhost:8081/repository/raw-hosted
+    username: admin
+    password: changeme
+
+- name: Enable user tokens and require tokens for repository authentication
+  cloudkrafter.nexus.user_tokens:
+    state: present
+    required_for_auth: true
+    url: http://localhost:8081/repository/raw-hosted
+    username: admin
+    password: changeme
+
+- name: Disable user tokens
+  cloudkrafter.nexus.user_tokens:
+    state: absent
+    url: http://localhost:8081/repository/raw-hosted
+    username: admin
+    password: changeme
+
+- name: Reset all user tokens
+  cloudkrafter.nexus.user_tokens:
+    state: present
+    reset_tokens: true
+    url: http://localhost:8081/repository/raw-hosted
+    username: admin
+    password: changeme
