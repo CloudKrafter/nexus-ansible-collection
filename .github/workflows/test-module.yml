@@ -6,6 +6,10 @@ on:
     types:
       - review_requested
   workflow_dispatch:
+    inputs:
+        nxrm_version:
+          description: Nexus Repository Manager version (e.g. 3.78.2 )
+          default: latest
 
 permissions:
   contents: read
@@ -114,7 +118,7 @@ jobs:
 
     services:
       nexus:
-        image: sonatype/nexus3:latest
+        image: sonatype/nexus3:${{ github.event.inputs.nxrm_version }}
         ports:
           - 8081:8081
         # options: >-
