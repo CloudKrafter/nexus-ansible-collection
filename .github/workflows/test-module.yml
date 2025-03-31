@@ -118,7 +118,7 @@ jobs:
 
     services:
       nexus:
-        image: sonatype/nexus3:${{ github.event.inputs.nxrm_version }}
+        image: sonatype/nexus3:${{ github.event.inputs.nxrm_version || 'latest' }}
         ports:
           - 8081:8081
         # options: >-
