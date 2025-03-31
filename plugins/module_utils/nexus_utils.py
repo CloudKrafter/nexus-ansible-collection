@@ -17,8 +17,13 @@ from ansible.module_utils.urls import (
 )
 
 
-class NexusError(Exception):
-    """Base exception for Nexus operations"""
+class ModuleError(Exception):
+    """Base exception for module"""
+    pass
+
+
+class NexusError(ModuleError):
+    """General Nexus related errors"""
     pass
 
 
