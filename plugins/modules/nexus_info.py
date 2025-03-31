@@ -69,7 +69,7 @@ from ansible.module_utils._text import to_native
 
 from ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils import (
     create_auth_headers,
-    NexusError
+    RepositoryError
 )
 import json
 
@@ -88,7 +88,7 @@ def get_node_id(base_url, headers, validate_certs):
         result = json.loads(response.read())
         return result.get('nodeId')
     except Exception as e:
-        raise NexusError(f"Failed to get node ID: {to_native(e)}")
+        raise RepositoryError(f"Failed to get node ID: {to_native(e)}")
 
 
 def get_system_info(base_url, headers, validate_certs):
@@ -104,7 +104,7 @@ def get_system_info(base_url, headers, validate_certs):
         )
         return json.loads(response.read())
     except Exception as e:
-        raise NexusError(
+        raise RepositoryError(
             f"Failed to get system information: {to_native(e)}")
 
 
