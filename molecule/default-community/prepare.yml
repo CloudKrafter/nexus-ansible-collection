@@ -3,65 +3,65 @@
   hosts: localhost
   gather_facts: false
   tasks:
-
-    - name: Get info on container
+    - name: Get info on present containers
       community.docker.docker_container_info:
         name: nexus3-oss
-      register: result
+      register: nexus_container_info
 
-    - name: Print information about container
+    - name: Debug container info
       ansible.builtin.debug:
-        var: result.container
+        var: nexus_container_info
+        verbosity: 1
 
-    - name: Wait for Nexus writable API endpoint to be available
-      ansible.builtin.uri:
-        url: "http://nexus3-oss:8081/service/rest/v1/status/writable"
-        method: GET
-        validate_certs: false
-        status_code: 200
-      register: __nexus_writable__
-      until: __nexus_writable__.status == 200
-      retries: 30
-      delay: 10
+    # - name: Wait for Nexus writable API endpoint to be available
+    #   ansible.builtin.uri:
+    #     url: "http://nexus3-oss:8081/service/rest/v1/status/writable"
+    #     method: GET
+    #     validate_certs: false
+    #     status_code: 200
+    #   register: __nexus_writable__
+    #   until: __nexus_writable__.status == 200
+    #   retries: 30
+    #   delay: 10
 
-    - name: Fetch the admin.password from the nexus3-oss container
-      community.docker.docker_container_exec:
-        container: nexus3-oss
-        command: "cat /nexus-data/admin.password"
-      register: __nexus_initial_admin_password__
+    # - name: Fetch the admin.password from the nexus3-oss container
+    #   community.docker.docker_container_exec:
+    #     container: nexus3-oss
+    #     command: "cat /nexus-data/admin.password"
+    #   register: __nexus_initial_admin_password__
 
-    - name: Show the admin.password
-      ansible.builtin.debug:
-        var: __nexus_initial_admin_password__
+    # - name: Show the admin.password
+    #   ansible.builtin.debug:
+    #     var: __nexus_initial_admin_password__
 
-    - name: Update password of admin user
-      ansible.builtin.uri:
-        url: "http://nexus3-oss:8081/service/rest/v1/security/users/admin/change-password"
-        user: admin
-        password: "{{ __nexus_initial_admin_password__.stdout }}"
-        method: PUT
-        force_basic_auth: true
-        validate_certs: false
-        status_code: 204
-        headers:
-          Content-Type: text/plain
-          accept: application/json
-        body: "changeme"
-        body_format: raw
+    # - name: Update password of admin user
+    #   ansible.builtin.uri:
+    #     url: "http://nexus3-oss:8081/service/rest/v1/security/users/admin/change-password"
+    #     user: admin
+    #     password: "{{ __nexus_initial_admin_password__.stdout }}"
+    #     method: PUT
+    #     force_basic_auth: true
+    #     validate_certs: false
+    #     status_code: 204
+    #     headers:
+    #       Content-Type: text/plain
+    #       accept: application/json
+    #     body: "changeme"
+    #     body_format: raw
 
-    - name: Disable Anonmous access
-      ansible.builtin.uri:
-        url: "http://nexus3-oss:8081/service/rest/v1/security/anonymous"
-        user: admin
-        password: changeme
-        method: PUT
-        force_basic_auth: true
-        validate_certs: false
-        status_code: 200
-        body: |
-          {
-            "enabled": false,
-            "userId": "anonymous",
-            "realmName": "NexusAuthorizingRealm"
-          }
-        body_format: json
+    # - name: Disable Anonmous access
+    #   ansible.builtin.uri:
+    #     url: "http://nexus3-oss:8081/service/rest/v1/security/anonymous"
+    #     user: admin
+    #     password: changeme
+    #     method: PUT
+    #     force_basic_auth: true
+    #     validate_certs: false
+    #     status_code: 200
+    #     body: |
+    #       {
+    #         "enabled": false,
+    #         "userId": "anonymous",
+    #         "realmName": "NexusAuthorizingRealm"
+    #       }
+    #     body_format: json
