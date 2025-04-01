@@ -3,6 +3,16 @@
   hosts: localhost
   gather_facts: false
   tasks:
+
+    - name: Get info on container
+      community.docker.docker_container_info:
+        name: nexus3-oss
+      register: result
+
+    - name: Print information about container
+      ansible.builtin.debug:
+        var: result.container
+
     - name: Wait for Nexus writable API endpoint to be available
       ansible.builtin.uri:
         url: "http://nexus3-oss:8081/service/rest/v1/status/writable"
