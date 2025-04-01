@@ -2,6 +2,10 @@ name: Module Test
 
 on:
   push:
+    paths:
+      - 'tests/**'
+      - 'plugins/**'
+      - '.github/workflows/**'
   pull_request:
     types:
       - review_requested

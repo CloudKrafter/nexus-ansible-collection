@@ -2,6 +2,10 @@ name: Molecule Test
 
 on:
   push:
+    paths:
+      - 'molecule/**'
+      - 'roles/**'
+      - '.github/workflows/**'
   pull_request:
     types: [review_requested]
   workflow_dispatch:
