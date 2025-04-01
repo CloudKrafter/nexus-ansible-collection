@@ -16,14 +16,6 @@
     - nexus_latest_link.stat.exists | default(false)
     - nexus_latest_link.stat.islnk | default(false)
 
-- name: Register nexus_version from currently installed
-  ansible.builtin.set_fact:
-    nexus_version: "{{ nexus_version_running }}"
-    nexus_version_detected_from: installed
-  when:
-    - nexus_version_running is defined
-    - not (nexus_upgrade | default(false) | bool)
-
 #     - name: Call latest nexus uri to get redirection
 #       ansible.builtin.uri:
 #         url: "{{ nexus_download_url }}/latest-unix.tar.gz"
@@ -39,6 +31,68 @@
     nexus_version_detected_from: fixed
   when: nexus_version | length > 0
 
+- name: Register nexus_version from latest nexus download
+  ansible.builtin.set_fact:
+    nexus_version: "{{ __nexus_download__.version }}"
+    nexus_version_detected_from: latest
+  when: nexus_version | length == 0
+
+- name: Register nexus_version from currently installed
+  ansible.builtin.set_fact:
+    nexus_version: "{{ nexus_version_running }}"
+    nexus_version_detected_from: installed
+  when:
+    - nexus_version_running is defined
+    - not (nexus_upgrade | default(false) | bool)
+
+- name: Validate version changes
+  ansible.builtin.set_fact:
+    nexus_version_change:
+      current: "{{ nexus_version_running | default('none') }}"
+      desired: "{{ nexus_version | default('latest') }}"
+      is_upgrade: "{{ nexus_version is version(nexus_version_running, '>') if (nexus_version is defined and nexus_version_running is defined) else false }}"
+      is_downgrade: "{{ nexus_version is version(nexus_version_running, '<') if (nexus_version is defined and nexus_version_running is defined) else false }}"
+      proceed_with_version_change: false
+  when: nexus_version_running is defined
+
+- name: Determine if version change should proceed
+  ansible.builtin.set_fact:
+    nexus_version_change:
+      "{{ nexus_version_change | combine({
+        'proceed_with_version_change': (
+          (nexus_version_change.is_upgrade and (nexus_upgrade | default(false))) or
+          (nexus_version_change.is_downgrade and (nexus_downgrade | default(false)))
+        )
+      }) }}"
+  when: nexus_version_running is defined
+
+- name: Print info about detected version to use
+  vars:
+    version_info: |-
+      Desired version: {{ nexus_version }}
+      Current running version: {{ nexus_version_running | default('none') }}
+      Version detected from: {{ nexus_version_detected_from }}
+      Java version: {{ nexus_java_version | default(17) }}
+      Is upgrade: "{{ nexus_version_change.is_upgrade }}"
+      Is downgrade: "{{ nexus_version_change.is_downgrade }}"
+      Upgrade allowed: {{ nexus_upgrade | default(false) | bool }}
+      Downgrade allowed: {{ nexus_allow_downgrade | default(false) | bool }}
+      Will change version: {{ nexus_version_change.proceed_with_change }}
+  ansible.builtin.debug:
+    msg: "{{ version_info.split('\n') }}"
+
+- name: Keep current version if no change is allowed
+  ansible.builtin.set_fact:
+    nexus_version: "{{ nexus_version_running }}"
+  when: 
+    - nexus_version_running is defined
+    - not nexus_version_change.proceed_with_version_change
+
+- name: Set facts for deprecated features
+  ansible.builtin.set_fact:
+    nexus_log4j_supported: "{{ nexus_version is version('3.77.2-02', '<=') }}"
+    nexus_bower_supported: "{{ nexus_version is version('3.77.2-02', '<=') }}"
+
 - name: Download Nexus package
   cloudkrafter.nexus.download:
     state: "{{ 'present' if nexus_version | length > 0 else 'latest' }}"
@@ -49,28 +103,6 @@
     validate_certs: "{{ nexus_download_ssl_verify | default(omit) }}"
   environment: "{{ nexus_proxy_env_vars | default(omit) }}"
   register: __nexus_download__
-
-- name: Register nexus_version from latest nexus download
-  ansible.builtin.set_fact:
-    nexus_version: "{{ __nexus_download__.version }}"
-    nexus_version_detected_from: latest
-  when: nexus_version | length == 0
-
-- name: Print info about detected version to use
-  vars:
-    version_info: |-
-      Desired version: {{ nexus_version }}
-      Java version: {{ nexus_java_version | default(17) }}
-      Version detected from: {{ nexus_version_detected_from }}
-      Upgrade allowed: {{ nexus_upgrade | default(false) | bool }}
-      Current running version: {{ nexus_version_running | default('none') }}
-  ansible.builtin.debug:
-    msg: "{{ version_info.split('\n') }}"
-
-- name: Set facts for deprecated features
-  ansible.builtin.set_fact:
-    nexus_log4j_supported: "{{ nexus_version is version('3.77.2-02', '<=') }}"
-    nexus_bower_supported: "{{ nexus_version is version('3.77.2-02', '<=') }}"
 
 - name: Ensure Nexus o/s group exists
   ansible.builtin.group:
