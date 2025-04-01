@@ -77,7 +77,7 @@
       Is downgrade: "{{ nexus_version_change.is_downgrade }}"
       Upgrade allowed: {{ nexus_upgrade | default(false) | bool }}
       Downgrade allowed: {{ nexus_allow_downgrade | default(false) | bool }}
-      Will change version: {{ nexus_version_change.proceed_with_change }}
+      Will change version: {{ nexus_version_change.proceed_with_version_change }}
   ansible.builtin.debug:
     msg: "{{ version_info.split('\n') }}"
 
