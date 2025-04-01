@@ -1,6 +1,6 @@
 # defaults file for nexus3-config-as-code
 nexus_api_scheme: http
-nexus_api_hostname: nexus3-oss
+nexus_api_hostname: localhost
 nexus_api_port: 8081
 nexus_api_validate_certs: "{{ nexus_api_scheme == 'https' }}"
 nexus_api_timeout: 60
