@@ -24,7 +24,7 @@ platforms:
 
   - name: nexus3-oss
     hostname: nexus3-oss
-    image: "sonatype/nexus3:${NEXUS_VERSION:-latest}"
+    image: "sonatype/nexus3:${NEXUS_VERSION}"
     pull: true
     pre_build_image: true
     privileged: true
