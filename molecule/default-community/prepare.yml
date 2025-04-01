@@ -34,34 +34,34 @@
       ansible.builtin.debug:
         var: __nexus_initial_admin_password__
 
-    # - name: Update password of admin user
-    #   ansible.builtin.uri:
-    #     url: "http://nexus3-oss:8081/service/rest/v1/security/users/admin/change-password"
-    #     user: admin
-    #     password: "{{ __nexus_initial_admin_password__.stdout }}"
-    #     method: PUT
-    #     force_basic_auth: true
-    #     validate_certs: false
-    #     status_code: 204
-    #     headers:
-    #       Content-Type: text/plain
-    #       accept: application/json
-    #     body: "changeme"
-    #     body_format: raw
+    - name: Update password of admin user
+      ansible.builtin.uri:
+        url: "http://localhost:8081/service/rest/v1/security/users/admin/change-password"
+        user: admin
+        password: "{{ __nexus_initial_admin_password__.stdout }}"
+        method: PUT
+        force_basic_auth: true
+        validate_certs: false
+        status_code: 204
+        headers:
+          Content-Type: text/plain
+          accept: application/json
+        body: "changeme"
+        body_format: raw
 
-    # - name: Disable Anonmous access
-    #   ansible.builtin.uri:
-    #     url: "http://nexus3-oss:8081/service/rest/v1/security/anonymous"
-    #     user: admin
-    #     password: changeme
-    #     method: PUT
-    #     force_basic_auth: true
-    #     validate_certs: false
-    #     status_code: 200
-    #     body: |
-    #       {
-    #         "enabled": false,
-    #         "userId": "anonymous",
-    #         "realmName": "NexusAuthorizingRealm"
-    #       }
-    #     body_format: json
+    - name: Disable Anonmous access
+      ansible.builtin.uri:
+        url: "http://localhost:8081/service/rest/v1/security/anonymous"
+        user: admin
+        password: changeme
+        method: PUT
+        force_basic_auth: true
+        validate_certs: false
+        status_code: 200
+        body: |
+          {
+            "enabled": false,
+            "userId": "anonymous",
+            "realmName": "NexusAuthorizingRealm"
+          }
+        body_format: json
