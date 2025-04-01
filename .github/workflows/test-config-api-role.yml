@@ -28,7 +28,7 @@ jobs:
         run: pip3 install ansible molecule molecule-plugins[docker] docker
 
       - name: Run Molecule tests.
-        run: molecule test -s ${{ matrix.distro }}
+        run: molecule test -s ${{ matrix.distro }} -- -vv
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'

@@ -11,8 +11,8 @@
     - name: Debug container info
       ansible.builtin.debug:
         var: nexus_container_info
-        verbosity: 1
-
+        verbosity: 2
+  
     # - name: Wait for Nexus writable API endpoint to be available
     #   ansible.builtin.uri:
     #     url: "http://nexus3-oss:8081/service/rest/v1/status/writable"
