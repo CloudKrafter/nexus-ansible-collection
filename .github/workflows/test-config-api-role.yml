@@ -17,30 +17,67 @@ on:
         type: string
 
 jobs:  
-  molecule:
-    name: Molecule
+  community-edition:
+    name: Test Community Edition
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         distro:
           - default-community
+          - default-rockylinux8
+          - default-rockylinux9
+          - default-debian_bookworm
+          - default-debian_bookworm
+          - default-ubuntu_20.04
+          - default-ubuntu_22.04
 
     steps:
       - name: Check out the codebase.
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
+          cache: 'pip'
 
       - name: Install test dependencies.
         run: pip3 install ansible molecule molecule-plugins[docker] docker
 
       - name: Run Molecule tests.
-        run: molecule test -s ${{ matrix.distro }} -- -vv
+        run: molecule test -s ${{ matrix.distro }}
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
-          MOLECULE_DISTRO: ${{ matrix.distro }}
+          NEXUS_VERSION: ${{ github.event.inputs.nexus_version || 'latest' }}
+
+  pro-edition:
+    name: Test Pro Edition
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - default-pro
+          - postgres-rockylinux9
+
+    steps:
+      - name: Check out the codebase.
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install test dependencies.
+        run: pip3 install ansible molecule molecule-plugins[docker] docker
+
+      - name: Run Molecule tests.
+        run: molecule test -s ${{ matrix.distro }}
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
           NEXUS_VERSION: ${{ github.event.inputs.nexus_version || 'latest' }}
