@@ -5,7 +5,7 @@
   tasks:
     - name: Wait for Nexus writable API endpoint to be available
       ansible.builtin.uri:
-        url: "http://localhost:8081/service/rest/v1/status/writable"
+        url: "http://nexus3-oss:8081/service/rest/v1/status/writable"
         method: GET
         validate_certs: false
         status_code: 200
@@ -16,7 +16,7 @@
 
     - name: Fetch the admin.password from the nexus3-oss container
       community.docker.docker_container_exec:
-        container: nexus3-community
+        container: nexus3-oss
         command: "cat /nexus-data/admin.password"
       register: __nexus_initial_admin_password__
 
@@ -26,7 +26,7 @@
 
     - name: Update password of admin user
       ansible.builtin.uri:
-        url: "http://localhost:8081/service/rest/v1/security/users/admin/change-password"
+        url: "http://nexus3-oss:8081/service/rest/v1/security/users/admin/change-password"
         user: admin
         password: "{{ __nexus_initial_admin_password__.stdout }}"
         method: PUT
@@ -41,7 +41,7 @@
 
     - name: Disable Anonmous access
       ansible.builtin.uri:
-        url: "http://localhost:8081/service/rest/v1/security/anonymous"
+        url: "http://nexus3-oss:8081/service/rest/v1/security/anonymous"
         user: admin
         password: changeme
         method: PUT
