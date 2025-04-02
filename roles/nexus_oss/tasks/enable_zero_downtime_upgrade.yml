@@ -101,6 +101,7 @@
     force_basic_auth: true
     timeout: "{{ nexus_api_timeout }}"
     method: POST
+    status_code: 204
     validate_certs: "{{ nexus_api_validate_certs }}"
   tags: nexus-upgrade
   when: __nexus_db_migration__.json['state'] == "MIGRATION_REQUIRED"

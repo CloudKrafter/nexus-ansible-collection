@@ -22,9 +22,9 @@ platforms:
     networks: &nexus_network
       - name: nexus
 
-  - name: nexus3-community
-    hostname: nexus3-community
-    image: sonatype/nexus3
+  - name: nexus3-oss
+    hostname: nexus3-oss
+    image: "sonatype/nexus3:${NEXUS_VERSION}"
     pull: true
     pre_build_image: true
     privileged: true
