@@ -84,11 +84,11 @@
       Current running version: {{ nexus_version_running | default('none') }}
       Version detected from: {{ nexus_version_detected_from }}
       Java version: {{ nexus_java_version | default(17) }}
-      Is upgrade: "{{ nexus_version_change.is_upgrade }}"
-      Is downgrade: "{{ nexus_version_change.is_downgrade }}"
+      Is upgrade: "{{ nexus_version_change.is_upgrade | default(false) }}"
+      Is downgrade: "{{ nexus_version_change.is_downgrade | default(false) }}"
       Upgrade allowed: {{ nexus_upgrade | default(false) | bool }}
       Downgrade allowed: {{ nexus_allow_downgrade | default(false) | bool }}
-      Will change version: {{ nexus_version_change.proceed_with_version_change }}
+      Will change version: {{ nexus_version_change.proceed_with_version_change | default(false) }}
   ansible.builtin.debug:
     msg: "{{ version_info.split('\n') }}"
 
