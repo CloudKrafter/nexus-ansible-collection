@@ -66,19 +66,6 @@
     - nuget.org-proxy
   when: (nexus_data_dir_contents.matched == 0) and nexus_delete_default_repos
 
-- name: Deleting default blobstore
-  ansible.builtin.include_tasks: delete_blobstore_each.yml
-  with_items: >-
-    {{
-      {'default':{'blob': 'default'}}
-      | combine(nexus_blob_names)
-      | json_query("*.{name: blob}")
-      | list
-      | unique
-    }}
-  when: (nexus_data_dir_contents.matched == 0) and nexus_delete_default_blobstore
-  tags: blobstores
-
 - name: Provisioning (ldap, content selectors, blobstores, prepare privileges)
   when: nexus_run_provisionning | default(true) | bool
   tags:
@@ -131,6 +118,19 @@
             return_content: true
             status_code: 200
           register: __nexus_existing_blobstores__
+          tags: blobstores
+
+        - name: Deleting default blobstore
+          ansible.builtin.include_tasks: delete_blobstore_each.yml
+          loop: >-
+            {{
+              {'default':{'blob': 'default'}}
+              | combine(nexus_blob_names)
+              | json_query("*.{name: blob}")
+              | list
+              | unique
+            }}
+          when: (nexus_data_dir_contents.matched == 0) and nexus_delete_default_blobstore
           tags: blobstores
 
         - name: Create directories for blob stores.
