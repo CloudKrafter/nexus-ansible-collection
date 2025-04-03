@@ -73,7 +73,7 @@ scenario:
     - prepare
     - converge
     - idempotence
-    - check
+    # - check # disabled because the uri module does not support check mode
     - verify
     - destroy
 

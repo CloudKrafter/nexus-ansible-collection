@@ -159,7 +159,7 @@ nexus_security_realms:
   - DockerToken
   - LdapRealm
   - NpmToken
-  - rutauth-realm
+# - rutauth-realm # Broken in COMMUNITY edition since NXRM 3.78.x
 
 nexus_blobstores:
   - name: default
@@ -1507,7 +1507,7 @@ nexus_repos_docker_hosted:
       forceBasicAuth: true
       httpPort: 10002
       httpsPort: 10003
-      subdomain: docker-hosted-offline
+      #subdomain: docker-hosted-offline # not supported in COMMUNITY edition
 
 nexus_repos_docker_proxy:
   - name: docker-proxy-1

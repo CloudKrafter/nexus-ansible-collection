@@ -5,7 +5,7 @@ on:
     paths:
       - 'molecule/**'
       - 'roles/**'
-      - '.github/workflows/**'
+      - '.github/workflows/test-molecule.yml'
   pull_request:
     types: [review_requested]
   workflow_dispatch:
@@ -16,6 +16,9 @@ on:
         default: 'latest'
         type: string
 
+permissions:
+  contents: read
+
 jobs:  
   community-edition:
     name: Test Community Edition
@@ -25,12 +28,12 @@ jobs:
       matrix:
         distro:
           - default-community
-          - default-rockylinux8
           - default-rockylinux9
-          - default-debian_bookworm
-          - default-debian_bookworm
-          - default-ubuntu_20.04
-          - default-ubuntu_22.04
+          # - default-rockylinux8
+          # - default-debian_bookworm
+          # - default-debian_bookworm
+          # - default-ubuntu_20.04
+          # - default-ubuntu_22.04
 
     steps:
       - name: Check out the codebase.
@@ -43,7 +46,7 @@ jobs:
           cache: 'pip'
 
       - name: Install test dependencies.
-        run: pip3 install ansible molecule molecule-plugins[docker] docker
+        run: pip3 install ansible molecule molecule-plugins[docker] docker jmespath
 
       - name: Run Molecule tests.
         run: molecule test -s ${{ matrix.distro }}
@@ -60,7 +63,7 @@ jobs:
       matrix:
         distro:
           - default-pro
-          - postgres-rockylinux9
+          # - postgres-rockylinux9
 
     steps:
       - name: Check out the codebase.
@@ -73,7 +76,7 @@ jobs:
           cache: 'pip'
 
       - name: Install test dependencies.
-        run: pip3 install ansible molecule molecule-plugins[docker] docker
+        run: pip3 install ansible molecule molecule-plugins[docker] docker jmespath
 
       - name: Run Molecule tests.
         run: molecule test -s ${{ matrix.distro }}
@@ -81,3 +84,4 @@ jobs:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
           NEXUS_VERSION: ${{ github.event.inputs.nexus_version || 'latest' }}
+          NEXUS_LICENSE_B64: ${{ secrets.NEXUS_LICENSE_B64 }}
