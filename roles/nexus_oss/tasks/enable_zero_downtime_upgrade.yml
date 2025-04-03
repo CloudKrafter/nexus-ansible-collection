@@ -104,7 +104,7 @@
     status_code: 204
     validate_certs: "{{ nexus_api_validate_certs }}"
   tags: nexus-upgrade
-  when: __nexus_db_migration__.json['state'] == "MIGRATION_REQUIRED"
+  when: __nexus_db_migration__ and __nexus_db_migration__.json['state'] == "MIGRATION_REQUIRED" 
 
 - name: Check database migration status
   ansible.builtin.uri:
