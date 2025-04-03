@@ -5,5 +5,31 @@
   collections:
     - cloudkrafter.nexus
 
+  pre_tasks:
+    - name: Install Nexus Pro License
+      when: lookup('env', 'NEXUS_LICENSE_B64') | default(false, true)
+      block:
+        - name: Include license installation tasks
+          ansible.builtin.include_role:
+            name: cloudkrafter.nexus.config_api
+            tasks_from: license-api.yml
+
+        - name: Restart Nexus container
+          community.docker.docker_container:
+            name: nexus3-pro
+            state: started
+            restart: true
+
+        - name: Wait for Nexus API to be available after restart
+          ansible.builtin.uri:
+            url: "http://localhost:8081/service/rest/v1/status/writable"
+            method: GET
+            validate_certs: false
+            status_code: 200
+          register: __nexus_writable__
+          until: __nexus_writable__.status == 200
+          retries: 30
+          delay: 10
+
   roles:
     - role: cloudkrafter.nexus.config_api

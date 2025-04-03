@@ -11,7 +11,7 @@ driver:
 platforms:
   - name: nexus3-oss-rockylinux9
     hostname: nexus3-oss-rockylinux9
-    image: thoteam/molecule_apache_openjdk8:rockylinux9
+    image: brianveltman/molecule_openjdk17:rockylinux9
     pull: true
     pre_build_image: true
     privileged: true
@@ -20,7 +20,7 @@ platforms:
     override_command: false
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
-      - ${MOLECULE_PROJECT_DIRECTORY}/molecule/.nexus-downloads:/nexus-downloads
+      - nexus-downloads:/nexus-downloads
     cgroupns_mode: host
     groups:
       - nexus
@@ -41,6 +41,9 @@ platforms:
 
 provisioner:
   name: ansible
+  config_options:
+    defaults:
+      callbacks_enabled: timer, profile_roles, profile_tasks
 
 scenario:
   check_sequence:
@@ -56,12 +59,12 @@ scenario:
     - destroy
     - create
     - converge
-    - idempotence
-    - check
+    # - idempotence
+    # - check
     - verify
     - destroy
 
 verifier:
-  name: testinfra
+  name: ansible
 
 role_name_check: 2

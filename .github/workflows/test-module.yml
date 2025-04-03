@@ -5,7 +5,7 @@ on:
     paths:
       - 'tests/**'
       - 'plugins/**'
-      - '.github/workflows/**'
+      - '.github/workflows/test-module.yml'
   pull_request:
     types:
       - review_requested
