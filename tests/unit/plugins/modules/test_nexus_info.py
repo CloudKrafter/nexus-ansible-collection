@@ -89,8 +89,8 @@ class TestNexusInfoModule:
         mock_response.read.return_value = json.dumps({
             "nexus-status": {
                 "1656c370-0cd3-4867-a077-f64ba13e4ec3": {
-                    "edition": "OSS",
-                    "version": "3.77.1-01"
+                    "edition": "COMMUNITY",
+                    "version": "3.79.0-09"
                 }
             }
         }).encode('utf-8')
@@ -104,17 +104,24 @@ class TestNexusInfoModule:
                 validate_certs=True
             )
 
-            assert result["nexus-status"]["1656c370-0cd3-4867-a077-f64ba13e4ec3"]["edition"] == "OSS"
+            assert result["nexus-status"]["1656c370-0cd3-4867-a077-f64ba13e4ec3"]["edition"] == "COMMUNITY"
             mock_open_url.assert_called_once()
 
     def test_format_node_info(self):
         """Test formatting node information"""
         node_id = "1656c370-0cd3-4867-a077-f64ba13e4ec3"
+
+        node_data = {
+            'node_id': node_id,
+            'version': '3.79.0-09',
+            'edition': 'COMMUNITY'
+        }
+
         system_info = {
             "nexus-status": {
                 node_id: {
-                    "edition": "OSS",
-                    "version": "3.77.1-01"
+                    "edition": "COMMUNITY",
+                    "version": "3.79.0-09"
                 }
             },
             "system-network": {
@@ -127,11 +134,21 @@ class TestNexusInfoModule:
             }
         }
 
-        result = format_node_info(node_id, system_info)
+        # Test with system info
+        result = format_node_info(node_data, system_info)
+        assert result["node_id"] == node_data["node_id"]
+        assert result["version"] == node_data["version"]
+        assert result["edition"] == node_data["edition"]
+        assert result["basic_info"] is False
+        assert result["nexus-status"]["edition"] == "COMMUNITY"
+        assert result["system-network"]["lo"]["mtu"] == 65536
 
-        assert result["node_id"] == node_id
-        assert result["node_info"]["nexus-status"]["edition"] == "OSS"
-        assert result["node_info"]["system-network"]["lo"]["mtu"] == 65536
+        # Test without system info
+        basic_result = format_node_info(node_data)
+        assert basic_result["node_id"] == node_data["node_id"]
+        assert basic_result["version"] == node_data["version"]
+        assert basic_result["edition"] == node_data["edition"]
+        assert basic_result["basic_info"] is True
 
     def test_main_function(self):
         """Test main function execution"""
@@ -147,11 +164,18 @@ class TestNexusInfoModule:
         mock_module.check_mode = False
 
         node_id = "1656c370-0cd3-4867-a077-f64ba13e4ec3"
+
+        node_data = {
+            'node_id': node_id,
+            'version': '3.79.0-09',
+            'edition': 'COMMUNITY'
+        }
+
         system_info = {
             "nexus-status": {
                 node_id: {
-                    "edition": "OSS",
-                    "version": "3.77.1-01"
+                    "edition": "COMMUNITY",
+                    "version": "3.79.0-09"
                 }
             }
         }
@@ -161,7 +185,7 @@ class TestNexusInfoModule:
                 patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.get_system_info') as mock_get_system_info:
 
             mock_ansible_module.return_value = mock_module
-            mock_get_node_id.return_value = node_id
+            mock_get_node_id.return_value = node_data
             mock_get_system_info.return_value = system_info
 
             main()
@@ -171,8 +195,10 @@ class TestNexusInfoModule:
 
             call_args = mock_module.exit_json.call_args[1]
             assert call_args['changed'] is False
-            assert call_args['ansible_facts']['nexus_info']['node_id'] == node_id
-            assert call_args['ansible_facts']['nexus_info']['node_info']['nexus-status']['edition'] == "OSS"
+            assert call_args['ansible_facts']['nexus_info']['node_id'] == node_data['node_id']
+            assert call_args['ansible_facts']['nexus_info']['version'] == node_data['version']
+            assert call_args['ansible_facts']['nexus_info']['edition'] == node_data['edition']
+            assert call_args['ansible_facts']['nexus_info']['nexus-status']['edition'] == "COMMUNITY"
 
     def test_error_handling(self):
         """Test error handling in API calls"""
