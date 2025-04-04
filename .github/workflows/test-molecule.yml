@@ -22,6 +22,11 @@ permissions:
 jobs:  
   community-edition:
     name: Test Community Edition
+    if: |
+      contains(
+        fromJSON('["someone", "another-username"]'),
+        github.actor
+      )
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
