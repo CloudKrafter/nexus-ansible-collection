@@ -257,6 +257,8 @@ jobs:
         image: sonatype/nexus3:${{ github.event.inputs.nxrm_version || 'latest' }}
         ports:
           - 8081:8081
+        volumes:
+          - nexus-data:/nexus-data
 
     steps:
       - name: Checkout
@@ -308,13 +310,22 @@ jobs:
         run: |
           echo "${{ secrets.NEXUS_LICENSE_B64 }}" | base64 --decode > /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/nexus.license
 
+      # get license status
+      - name: Get Nexus license status
+        run: |
+          curl -X GET \
+            'http://localhost:8081/service/rest/v1/license' \
+            -H 'accept: application/json' \
+            -u admin:changeme
+          echo "License status: $?"
+      
       # Upload the license file to Nexus
       - name: Upload Nexus Pro license
         run: |
           curl -X POST \
             'http://localhost:8081/service/rest/v1/license' \
             -H 'accept: application/json' \
-            -H 'Content-Type: application/json' \
+            -H 'Content-Type: application/octet-stream' \
             -u admin:changeme \
             --data-binary @/home/runner/work/nexus-ansible-collection/nexus-ansible-collection/nexus.license
 
@@ -373,7 +384,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: integration-test-results
+          name: integration-pro-test-results
           path: |
             /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
           retention-days: 5
@@ -388,17 +399,3 @@ jobs:
           slug: CloudKrafter/nexus-ansible-collection
           flags: integrationtests-pro
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Collect Nexus logs on failure
-        if: failure()
-        run: |
-          mkdir -p /tmp/nexus-logs
-          docker cp $(docker ps -q):/nexus-data/log/ /tmp/nexus-logs/
-
-      - name: Upload Nexus logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nexus-logs
-          path: /tmp/nexus-logs
-          retention-days: 5
