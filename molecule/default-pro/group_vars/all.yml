@@ -154,6 +154,7 @@ nexus_ssl_truststore:
       port: 443
 
 nexus_security_realms:
+  - User-Token-Realm
   - NexusAuthenticatingRealm
 #   - NuGetApiKey
 #   - ConanToken
