@@ -91,7 +91,7 @@
 
     - name: Configure MinIO CLI
       ansible.builtin.command: |
-        mc alias set s3-storage http://s3-storage-pro:9000 minioadmin minioadmin
+        mc alias set s3-storage http://localhost:9000 minioadmin minioadmin
       register: minio_cli_configured
       changed_when: "'s3-storage' not in minio_cli_configured.stdout"
 
