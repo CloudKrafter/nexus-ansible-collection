@@ -163,7 +163,7 @@ nexus_security_realms:
   - DockerToken
   - LdapRealm
   - NpmToken
-  - rutauth-realm
+  # - rutauth-realm
   - SamlRealm
 
 nexus_blobstores:
