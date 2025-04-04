@@ -1691,7 +1691,7 @@ nexus_repos_maven_hosted:
     component:
       proprietaryComponents: false
     maven:
-      versionPolicy:
+      versionPolicy: RELEASE
       layoutPolicy: PERMISSIVE
       contentDisposition: ATTACHMENT
   - name: maven-snapshots
