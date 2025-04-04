@@ -18,7 +18,12 @@
 
 - name: Print Nexus information
   debug:
-    msg: "Nexus version is {{ ansible_facts.nexus_info.node_info['nexus-status'].version }}"
+    msg: |
+      Basic info only: {{ ansible_facts.nexus_info.basic_info }}
+      Version: {{ ansible_facts.nexus_info.version }}
+      Edition: {{ ansible_facts.nexus_info.edition }}
+      Node ID: {{ ansible_facts.nexus_info.node_id }}
+    verbosity: 1
 
 - name: Print nexus_data vars
   debug:

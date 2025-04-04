@@ -86,9 +86,26 @@ def get_node_id(base_url, headers, validate_certs):
             method='GET'
         )
         result = json.loads(response.read())
-        return result.get('nodeId')
+
+        # Extract version info from headers
+        server_header = response.headers.get('Server', '')
+        edition = 'unknown'
+        version_part = 'unknown'
+
+        if 'Nexus/' in server_header:
+            # Split "Nexus/3.79.0-09 (COMMUNITY)" into parts
+            version_part = server_header.split('Nexus/')[1].split(' ')[0]
+            edition_match = server_header.find('(')
+            if edition_match != -1:
+                edition = server_header[edition_match + 1:].rstrip(')')
+
+        return {
+            'node_id': result.get('nodeId'),
+            'version': version_part,
+            'edition': edition
+        }
     except Exception as e:
-        raise RepositoryError(f"Failed to get node ID: {to_native(e)}")
+        raise RepositoryError(f"Failed to get node ID: {to_native(e)}") from e
 
 
 def get_system_info(base_url, headers, validate_certs):
@@ -104,27 +121,31 @@ def get_system_info(base_url, headers, validate_certs):
         )
         return json.loads(response.read())
     except Exception as e:
-        raise RepositoryError(
-            f"Failed to get system information: {to_native(e)}")
+        # Return None if the endpoint fails
+        return None
 
 
-def format_node_info(node_id, system_info):
+def format_node_info(node_data, system_info=None):
     """Format system information for the specific node."""
-    node_info = {}
-
-    # Process each section of system info
-    for section, data in system_info.items():
-        if node_id in data:
-            # Extract node-specific data
-            node_info[section] = data[node_id]
-        else:
-            # Include non-node-specific data
-            node_info[section] = data
-
-    return {
-        'node_id': node_id,
-        'node_info': node_info
+    node_info = {
+        'node_id': node_data['node_id'],
+        'version': node_data['version'],
+        'edition': node_data['edition'],
+        'basic_info': True
     }
+
+    # Only include detailed info if system_info call succeeded
+    if system_info:
+        node_info['basic_info'] = False
+        for section, data in system_info.items():
+            if node_data['node_id'] in data:
+                # Extract node-specific data
+                node_info[section] = data[node_data['node_id']]
+            else:
+                # Include non-node-specific data
+                node_info[section] = data
+
+    return node_info
 
 
 def main():
@@ -149,7 +170,7 @@ def main():
 
     try:
         # Get node ID first
-        node_id = get_node_id(
+        node_data = get_node_id(
             base_url=module.params['url'],
             headers=headers,
             validate_certs=module.params['validate_certs']
@@ -163,7 +184,7 @@ def main():
         )
 
         # Format information for the specific node
-        node_info = format_node_info(node_id, system_info)
+        node_info = format_node_info(node_data, system_info)
 
         # Return facts
         module.exit_json(

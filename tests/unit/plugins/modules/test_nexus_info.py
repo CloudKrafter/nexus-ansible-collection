@@ -30,6 +30,10 @@ class TestNexusInfoModule:
         mock_response.read.return_value = json.dumps({
             "nodeId": "1656c370-0cd3-4867-a077-f64ba13e4ec3"
         }).encode('utf-8')
+        # Mock the headers with Nexus server information
+        mock_response.headers = {
+            'Server': 'Nexus/3.79.0-09 (COMMUNITY)'
+        }
 
         with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
@@ -40,13 +44,44 @@ class TestNexusInfoModule:
                 validate_certs=True
             )
 
-            assert result == "1656c370-0cd3-4867-a077-f64ba13e4ec3"
+            # Assert the structure and content of the result
+            assert result == {
+                'node_id': '1656c370-0cd3-4867-a077-f64ba13e4ec3',
+                'version': '3.79.0-09',
+                'edition': 'COMMUNITY'
+            }
+
             mock_open_url.assert_called_once_with(
                 'http://localhost:8081/service/rest/v1/system/node',
                 headers={'accept': 'application/json'},
                 validate_certs=True,
                 method='GET'
             )
+
+    def test_get_node_id_no_server_header(self):
+        """Test getting node ID with missing server header"""
+        mock_response = MagicMock()
+        mock_response.read.return_value = json.dumps({
+            "nodeId": "1656c370-0cd3-4867-a077-f64ba13e4ec3"
+        }).encode('utf-8')
+        # Empty headers
+        mock_response.headers = {}
+
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.open_url') as mock_open_url:
+            mock_open_url.return_value = mock_response
+
+            result = get_node_id(
+                base_url='http://localhost:8081',
+                headers={'accept': 'application/json'},
+                validate_certs=True
+            )
+
+            # Assert default values are returned when header is missing
+            assert result == {
+                'node_id': '1656c370-0cd3-4867-a077-f64ba13e4ec3',
+                'version': 'unknown',
+                'edition': 'unknown'
+            }
 
     def test_get_system_info(self):
         """Test getting system information"""
