@@ -116,7 +116,7 @@ jobs:
 
 
   integration:
-    name: Integration Tests
+    name: Integration Tests (COMMUNITY)
     runs-on: ubuntu-latest
     needs: module
 
@@ -125,12 +125,6 @@ jobs:
         image: sonatype/nexus3:${{ github.event.inputs.nxrm_version || 'latest' }}
         ports:
           - 8081:8081
-        # options: >-
-        #   --health-cmd "curl -f http://localhost:8081/service/rest/v1/status"
-        #   --health-interval 30s
-        #   --health-timeout 10s
-        #   --health-retries 5
-        #   --health-start-period 60s
 
     steps:
       - name: Checkout
@@ -211,22 +205,6 @@ jobs:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
 
-      # - name: Run download integration tests
-      #   run: |
-      #     cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-      #     ansible-test integration download --coverage --continue-on-error -v
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
-
-      # - name: Run raw_component integration tests
-      #   run: |
-      #     cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-      #     ansible-test integration raw_component --coverage --continue-on-error -v
-      #   env:
-      #     PY_COLORS: '1'
-      #     ANSIBLE_FORCE_COLOR: '1'
-
       - name: Generate code coverage report
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
@@ -253,6 +231,162 @@ jobs:
           # files: reports/coverage.xml
           slug: CloudKrafter/nexus-ansible-collection
           flags: integrationtests
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Collect Nexus logs on failure
+        if: failure()
+        run: |
+          mkdir -p /tmp/nexus-logs
+          docker cp $(docker ps -q):/nexus-data/log/ /tmp/nexus-logs/
+
+      - name: Upload Nexus logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-logs
+          path: /tmp/nexus-logs
+          retention-days: 5
+
+  integration-pro:
+    name: Integration Tests (PRO)
+    runs-on: ubuntu-latest
+    needs: module
+
+    services:
+      nexus:
+        image: sonatype/nexus3:${{ github.event.inputs.nxrm_version || 'latest' }}
+        ports:
+          - 8081:8081
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          ansible-galaxy collection install . --force
+      
+      - name: Wait for Nexus startup
+        run: |
+          timeout 300 bash -c 'until curl -f http://localhost:8081/service/rest/v1/status; do sleep 5; done'
+
+      - name: Change initial admin password
+        run: |
+          ADMIN_PASS=$(docker exec $(docker ps -q) cat /nexus-data/admin.password)
+          curl -u admin:$ADMIN_PASS -X PUT http://localhost:8081/service/rest/v1/security/users/admin/change-password -H "accept: application/json" -H "Content-Type: text/plain" -d "changeme"
+
+      - name: Get EULA disclaimer
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
+          DISCLAIMER=$(curl -s http://localhost:8081/service/rest/v1/system/eula \
+            -H 'accept: application/json' \
+            -u admin:changeme | jq -r '.disclaimer')
+          echo "EULA_DISCLAIMER=$DISCLAIMER" >> $GITHUB_ENV
+
+      - name: Accept EULA
+        run: |
+          curl -X POST \
+            'http://localhost:8081/service/rest/v1/system/eula' \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -u admin:changeme \
+            -d "{
+              \"accepted\": true,
+              \"disclaimer\": \"$EULA_DISCLAIMER\"
+            }"
+
+      # write license to a file
+      - name: Write Nexus license to file
+        run: |
+          echo "${{ secrets.NEXUS_LICENSE_B64 }}" | base64 --decode > /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/nexus.license
+
+      # Upload the license file to Nexus
+      - name: Upload Nexus Pro license
+        run: |
+          curl -X POST \
+            'http://localhost:8081/service/rest/v1/license' \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -u admin:changeme \
+            --data-binary @/home/runner/work/nexus-ansible-collection/nexus-ansible-collection/nexus.license
+
+      # Restart Nexus container
+      - name: Restart Nexus container
+        run: |
+          docker restart $(docker ps -q)
+
+      - name: Wait for Nexus startup
+        run: |
+          timeout 300 bash -c 'until curl -f http://localhost:8081/service/rest/v1/status; do sleep 5; done'
+
+      - name: Create raw repository
+        run: |
+          curl -X POST \
+            'http://localhost:8081/service/rest/v1/repositories/raw/hosted' \
+            -H 'accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -u admin:changeme \
+            -d '{
+              "name": "raw-hosted",
+              "online": true,
+              "storage": {
+                "blobStoreName": "default",
+                "strictContentTypeValidation": true,
+                "writePolicy": "ALLOW"
+              },
+              "cleanup": {
+                "policyNames": []
+              },
+              "component": {
+                "proprietaryComponents": false
+              },
+              "raw": {
+                "contentDisposition": "ATTACHMENT"
+              }
+            }'
+
+      - name: Run PRO integration tests
+        run: |
+          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+          ansible-test integration --coverage --continue-on-error -v
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
+
+      - name: Generate code coverage report
+        run: |
+          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+          ansible-test coverage xml
+
+      - name: Copy test output files
+        run: |
+          mkdir -p /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
+          cp -r /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus/tests/output/* /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: |
+            /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output
+          retention-days: 5
+
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          directory: /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
+          # files: reports/coverage.xml
+          slug: CloudKrafter/nexus-ansible-collection
+          flags: integrationtests-pro
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Collect Nexus logs on failure
