@@ -153,18 +153,14 @@ nexus_ssl_truststore:
     - host: github.com
       port: 443
 
-nexus_security_realms:
-  - NexusAuthenticatingRealm
-  - User-Token-Realm
-  - NuGetApiKey
-  - ConanToken
-  - Crowd
-  - DefaultRole
-  - DockerToken
-  - LdapRealm
-  - NpmToken
-  # - rutauth-realm
-  - SamlRealm
+# nexus_security_realms:
+#   - NexusAuthenticatingRealm
+#   - NuGetApiKey
+#   - ConanToken
+#   - DefaultRole
+#   - DockerToken
+#   - LdapRealm
+#   - NpmToken
 
 nexus_blobstores:
   - name: default
