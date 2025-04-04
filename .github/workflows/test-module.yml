@@ -148,13 +148,13 @@ jobs:
           pip install -r requirements.txt
           ansible-galaxy collection install . --force
 
-      - name: Run integration tests
-        run: |
-          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test integration download --docker default --coverage --continue-on-error -v
-        env:
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
+      # - name: Run integration tests
+      #   run: |
+      #     cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+      #     ansible-test integration download --docker default --coverage --continue-on-error -v
+      #   env:
+      #     PY_COLORS: '1'
+      #     ANSIBLE_FORCE_COLOR: '1'
       
       - name: Wait for Nexus startup
         run: |
@@ -211,10 +211,26 @@ jobs:
               }
             }'
 
-      - name: Run integration tests
+      - name: Run nexus_info integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
           ansible-test integration nexus_info --coverage --continue-on-error -v
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
+
+      - name: Run download integration tests
+        run: |
+          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+          ansible-test integration download --docker default --coverage --continue-on-error -v
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
+
+      - name: Run raw_component integration tests
+        run: |
+          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
+          ansible-test integration raw_component --docker default --coverage --continue-on-error -v
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
