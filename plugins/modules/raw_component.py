@@ -75,6 +75,8 @@ options:
     required: false
 author:
   - "Brian Veltman (@cloudkrafter)"
+notes:
+    - This module can be used on the Ansible controller by delegating the task to localhost.
 '''
 
 EXAMPLES = '''

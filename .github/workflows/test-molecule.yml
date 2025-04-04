@@ -1,0 +1,87 @@
+name: Molecule Test
+
+on:
+  push:
+    paths:
+      - 'molecule/**'
+      - 'roles/**'
+      - '.github/workflows/test-molecule.yml'
+  pull_request:
+    types: [review_requested]
+  workflow_dispatch:
+    inputs:
+      nexus_version:
+        description: 'Nexus version to test (e.g., 3.58.1)'
+        required: false
+        default: 'latest'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:  
+  community-edition:
+    name: Test Community Edition
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - default-community
+          - default-rockylinux9
+          # - default-rockylinux8
+          # - default-debian_bookworm
+          # - default-debian_bookworm
+          # - default-ubuntu_20.04
+          # - default-ubuntu_22.04
+
+    steps:
+      - name: Check out the codebase.
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install test dependencies.
+        run: pip3 install ansible molecule molecule-plugins[docker] docker jmespath
+
+      - name: Run Molecule tests.
+        run: molecule test -s ${{ matrix.distro }} -- -vv
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
+          NEXUS_VERSION: ${{ github.event.inputs.nexus_version || 'latest' }}
+
+  pro-edition:
+    name: Test Pro Edition
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro:
+          - default-pro
+          # - postgres-rockylinux9
+
+    steps:
+      - name: Check out the codebase.
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+
+      - name: Install test dependencies.
+        run: pip3 install ansible molecule molecule-plugins[docker] docker jmespath
+
+      - name: Run Molecule tests.
+        run: molecule test -s ${{ matrix.distro }} -- -vv
+        env:
+          PY_COLORS: '1'
+          ANSIBLE_FORCE_COLOR: '1'
+          NEXUS_VERSION: ${{ github.event.inputs.nexus_version || 'latest' }}
+          NEXUS_LICENSE_B64: ${{ secrets.NEXUS_LICENSE_B64 }}

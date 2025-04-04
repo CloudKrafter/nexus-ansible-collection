@@ -9,6 +9,9 @@ nexus_default_port: 9081
 nexus_api_port: 9081
 nexus_hostname: localhost
 
+nexus_admin_password: changeme
+nexus_admin_username: admin
+
 nexus_custom_jvm_settings:
   - XX:+UseG1GC
   # - XX:+PrintGCDetails
@@ -59,8 +62,8 @@ nexus_anonymous_access: true
 
 nexus_audit_enabled: true
 
-nexus_rut_auth_realm: false
-nexus_rut_auth_header: CUSTOM_RUT_HEADER
+# nexus_rut_auth_realm: false
+# nexus_rut_auth_header: CUSTOM_RUT_HEADER
 
 nexus_repos_routing_rules:
   - name: routing-rule-block-nmap
@@ -658,13 +661,13 @@ nexus_privileges:
   - name: script1
     type: script
     description: first script
-    script_name: setup_realms
+    script_name: setup_capability
     actions:
       - all
   - name: script-new-syntax
     type: script
     description: second script
-    scriptName: create_task
+    scriptName: setup_base_url
     actions:
       - all
   - name: docker-login-search-all
@@ -748,7 +751,7 @@ nexus_local_users:
     first_name: Administrator
     last_name: User
     email: admin@example.org
-    password: s3cr3t
+    password: changeme
     roles:
       - nx-admin
   - username: jenkins

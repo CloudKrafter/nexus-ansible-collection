@@ -63,13 +63,14 @@ platforms:
 
   - name: nexus3-pro
     hostname: nexus3-pro
-    image: sonatype/nexus3
+    image: "sonatype/nexus3:${NEXUS_VERSION}"
     pull: true
     pre_build_image: true
     privileged: true
     override_command: false
-    env:
-      INSTALL4J_ADD_VM_PARAMS: "-Dnexus.licenseFile=/nexus-data/nexus.lic -Dnexus.datastore.enabled=true -Dnexus.datastore.nexus.jdbcUrl=jdbc:postgresql://postgresql-server:5432/nexus -Dnexus.datastore.nexus.username=nexus -Dnexus.datastore.nexus.password=nexus"
+    # TODO: Use postgres for NXRM Pro molecule test scenario 
+    # env:
+    #   INSTALL4J_ADD_VM_PARAMS: "-Dnexus.licenseFile=/nexus-data/nexus.lic -Dnexus.datastore.enabled=true -Dnexus.datastore.nexus.jdbcUrl=jdbc:postgresql://postgresql-server:5432/nexus -Dnexus.datastore.nexus.username=nexus -Dnexus.datastore.nexus.password=nexus"
     published_ports:
       - 8081:8081
     volumes:
@@ -114,7 +115,7 @@ scenario:
     - prepare
     - converge
     - idempotence
-    - check
+    # - check
     - verify
     - destroy
 

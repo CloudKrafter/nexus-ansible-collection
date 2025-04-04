@@ -3,37 +3,9 @@
   hosts: localhost
   gather_facts: false
   tasks:
-
-    - name: Create license file
-      ansible.builtin.copy:
-        content: "{{ lookup('env', 'NEXUS_LICENSE_B64') | b64decode }}"
-        dest: "nexus.lic"
-        mode: '0644'
-      register: __license_status__
-      # TODO: Need a fact to detmerine if we're already on pro version or not
-      when: (lookup('env', 'NEXUS_LICENSE_B64') is defined or nexus_license_b64 is defined) and nexus_enable_pro
-
-    - name: copy license to container
-      community.docker.docker_container_copy_into:
-        container: nexus3-pro
-        path: nexus.lic
-        container_path: /nexus-data/nexus.lic
-        mode: 0755
-      # TODO: Need a fact to detmerine if we're already on pro version or not
-      when: (lookup('env', 'NEXUS_LICENSE_B64') is defined or nexus_license_b64 is defined) and nexus_enable_pro
-
-    # - name: Gather facts about the nexus3-pro container
-    #   community.docker.docker_container_info:
-    #     name: nexus3-pro
-    #   register: nexus3_info
-
-    # - name: Set nexus3_ip variable
-    #   ansible.builtin.set_fact:
-    #     nexus3_ip: "{{ nexus3_info.container.NetworkSettings.Networks.nexus.IPAddress }}"
-
     - name: Wait for Nexus writable API endpoint to be available
       ansible.builtin.uri:
-        url: "http://nexus3-pro:8081/service/rest/v1/status/writable"
+        url: "http://localhost:8081/service/rest/v1/status/writable"
         method: GET
         validate_certs: false
         status_code: 200
@@ -42,7 +14,7 @@
       retries: 30
       delay: 10
 
-    - name: Fetch the admin.password from the nexus3-oss container
+    - name: Fetch the admin.password from the nexus3-pro container
       community.docker.docker_container_exec:
         container: nexus3-pro
         command: "cat /nexus-data/admin.password"
@@ -54,7 +26,7 @@
 
     - name: Update password of admin user
       ansible.builtin.uri:
-        url: "http://nexus3-pro:8081/service/rest/v1/security/users/admin/change-password"
+        url: "http://localhost:8081/service/rest/v1/security/users/admin/change-password"
         user: admin
         password: "{{ __nexus_initial_admin_password__.stdout }}"
         method: PUT
@@ -69,7 +41,7 @@
 
     - name: Disable Anonmous access
       ansible.builtin.uri:
-        url: "http://nexus3-pro:8081/service/rest/v1/security/anonymous"
+        url: "http://localhost:8081/service/rest/v1/security/anonymous"
         user: admin
         password: changeme
         method: PUT
@@ -83,6 +55,25 @@
             "realmName": "NexusAuthorizingRealm"
           }
         body_format: json
+
+    - name: Install MinIO Client
+      block:
+        - name: Download MinIO Client
+          ansible.builtin.get_url:
+            url: https://dl.min.io/client/mc/release/linux-amd64/mc
+            dest: /usr/local/bin/mc
+            mode: '0755'
+          become: true
+
+        - name: Configure MinIO CLI
+          ansible.builtin.command: |
+            mc alias set s3-storage http://localhost:9000 minioadmin minioadmin
+          register: minio_cli_configured
+          changed_when: "'s3-storage' not in minio_cli_configured.stdout"
+
+        - name: Show minio_cli_configured
+          ansible.builtin.debug:
+            var: minio_cli_configured
 
     - name: Remove license from file system
       ansible.builtin.file:
@@ -100,7 +91,7 @@
 
     - name: Configure MinIO CLI
       ansible.builtin.command: |
-        mc alias set s3-storage http://s3-storage-pro:9000 minioadmin minioadmin
+        mc alias set s3-storage http://localhost:9000 minioadmin minioadmin
       register: minio_cli_configured
       changed_when: "'s3-storage' not in minio_cli_configured.stdout"
 

@@ -154,9 +154,9 @@ Ansible variables, along with the default values (see `default/main.yml`) :
 The role will install latest nexus available version by default. You may fix the version by setting
 the `nexus_version` variable. See available versions at https://www.sonatype.com/download-oss-sonatype.
 
-If you set a fixed version and change it to a different one, the role will try to upgrade your installation.
-**Make sure to change to a later version in release history**. Downgrading will fail (unless you re-install
-from scratch using the [`nexus_purge` special var](#purge-nexus))
+If you set a fixed version and change it to a different one, the role will try to upgrade your installation if `nexus_upgrade: true` is set.
+**Make sure to change to a later version in release history**. By default this role will not downgrade a Nexus instance (unless you re-install
+from scratch using the [`nexus_purge` special var](#purge-nexus) and have set `nexus_downgrade:true`, to allow downgrades.)
 
 If you don't set a fixed version and play the role on an existing installation, the current installed version will be used
 (detecting target of `{{ nexus_installation_dir}}/nexus-latest`). If you want to upgrade nexus, you will have to pass
