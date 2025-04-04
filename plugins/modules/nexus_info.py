@@ -141,9 +141,6 @@ def format_node_info(node_data, system_info=None):
             if node_data['node_id'] in data:
                 # Extract node-specific data
                 node_info[section] = data[node_data['node_id']]
-            else:
-                # Include non-node-specific data
-                node_info[section] = data
 
     return node_info
 
