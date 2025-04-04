@@ -34,3 +34,26 @@
 
   roles:
     - role: cloudkrafter.nexus.config_api
+  
+  tasks:
+    - name: Gather Nexus information
+      cloudkrafter.nexus.nexus_info:
+        url: http://localhost:8081
+        username: admin
+        password: changeme
+        validate_certs: false
+      register: nexus_data
+
+    - name: Print Nexus information
+      vars:
+        info: |-
+          Basic info only: {{ ansible_facts.nexus_info.basic_info }}
+          Version: {{ ansible_facts.nexus_info.version }}
+          Edition: {{ ansible_facts.nexus_info.edition }}
+          Node ID: {{ ansible_facts.nexus_info.node_id }}
+      ansible.builtin.debug:
+        msg: "{{ info.split('\n') }}"
+
+    - name: Print nexus_data vars
+      debug:
+        var: nexus_data
