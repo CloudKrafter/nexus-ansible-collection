@@ -4,7 +4,7 @@ nexus_api_hostname: localhost
 nexus_api_port: 8081
 nexus_api_validate_certs: "{{ nexus_api_scheme == 'https' }}"
 nexus_api_timeout: 60
-nexus_s3_endpoint: "http://172.18.0.4:9000"
+nexus_s3_endpoint: "http://localhost:9000"
 nexus_admin_username: admin
 nexus_admin_password: changeme
 nexus_enable_pro_version: true
