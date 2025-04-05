@@ -57,7 +57,7 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
-nexus_info:
+nexus:
   description: Aggregated Nexus node information
   returned: always
   type: dict
@@ -130,17 +130,16 @@ def format_node_info(node_data, system_info=None):
     node_info = {
         'node_id': node_data['node_id'],
         'version': node_data['version'],
-        'edition': node_data['edition'],
-        'basic_info': True
+        'edition': node_data['edition']
     }
 
     # Only include detailed info if system_info call succeeded
     if system_info:
-        node_info['basic_info'] = False
+        node_info['details'] = {}
         for section, data in system_info.items():
             if node_data['node_id'] in data:
                 # Extract node-specific data
-                node_info[section] = data[node_data['node_id']]
+                node_info['details'][section] = data[node_data['node_id']]
 
     return node_info
 
@@ -187,7 +186,7 @@ def main():
         module.exit_json(
             changed=False,
             ansible_facts=dict(
-                nexus_info=node_info
+                nexus=node_info
             )
         )
 

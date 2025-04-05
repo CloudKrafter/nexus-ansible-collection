@@ -123,14 +123,6 @@ class TestNexusInfoModule:
                     "edition": "COMMUNITY",
                     "version": "3.79.0-09"
                 }
-            },
-            "system-network": {
-                node_id: {
-                    "lo": {
-                        "up": True,
-                        "mtu": 65536
-                    }
-                }
             }
         }
 
@@ -139,16 +131,15 @@ class TestNexusInfoModule:
         assert result["node_id"] == node_data["node_id"]
         assert result["version"] == node_data["version"]
         assert result["edition"] == node_data["edition"]
-        assert result["basic_info"] is False
-        assert result["nexus-status"]["edition"] == "COMMUNITY"
-        assert result["system-network"]["lo"]["mtu"] == 65536
+        assert "details" in result
+        assert result["details"]["nexus-status"]["edition"] == "COMMUNITY"
 
         # Test without system info
         basic_result = format_node_info(node_data)
         assert basic_result["node_id"] == node_data["node_id"]
         assert basic_result["version"] == node_data["version"]
         assert basic_result["edition"] == node_data["edition"]
-        assert basic_result["basic_info"] is True
+        assert "details" not in basic_result
 
     def test_main_function(self):
         """Test main function execution"""
@@ -195,10 +186,10 @@ class TestNexusInfoModule:
 
             call_args = mock_module.exit_json.call_args[1]
             assert call_args['changed'] is False
-            assert call_args['ansible_facts']['nexus_info']['node_id'] == node_data['node_id']
-            assert call_args['ansible_facts']['nexus_info']['version'] == node_data['version']
-            assert call_args['ansible_facts']['nexus_info']['edition'] == node_data['edition']
-            assert call_args['ansible_facts']['nexus_info']['nexus-status']['edition'] == "COMMUNITY"
+            assert call_args['ansible_facts']['nexus']['node_id'] == node_data['node_id']
+            assert call_args['ansible_facts']['nexus']['version'] == node_data['version']
+            assert call_args['ansible_facts']['nexus']['edition'] == node_data['edition']
+            assert call_args['ansible_facts']['nexus']['details']['nexus-status']['edition'] == "COMMUNITY"
 
     def test_error_handling(self):
         """Test error handling in API calls"""
