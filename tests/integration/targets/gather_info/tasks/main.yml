@@ -1,0 +1,31 @@
+- name: Wait for Nexus API
+  ansible.builtin.uri:
+    url: "http://localhost:8081/service/rest/v1/status"
+    method: GET
+    status_code: 200
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 5
+
+- name: Gather Nexus information
+  cloudkrafter.nexus.gather_info:
+    url: http://localhost:8081
+    username: admin
+    password: changeme
+    validate_certs: false
+  register: nexus_instance
+
+- name: Print nexus_data vars
+  debug:
+    var: nexus_instance
+
+- name: Print Nexus information
+  vars:
+    info: |-
+      Version: {{ nexus_instance.node.version }}
+      Edition: {{ nexus_instance.node.edition }}
+      Node ID: {{ nexus_instance.node.node_id }}
+      Details: {{ nexus_instance.node.details is defined }}
+  ansible.builtin.debug:
+    msg: "{{ info.split('\n') }}"

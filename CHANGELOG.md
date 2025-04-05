@@ -1,4 +1,10 @@
 # Changelog
+
+## Release notes moved to GitHub Releases
+
+Release notes can be found at: https://github.com/CloudKrafter/nexus-ansible-collection/releases
+
+
 ## [1.21.0] - 2025-03-28
 
 ### Changed

@@ -2,7 +2,7 @@
 - name: Prepare Nexus3 Community
   hosts: localhost
   gather_facts: false
-  tasks:
+  tasks:  
     - name: Wait for Nexus writable API endpoint to be available
       ansible.builtin.uri:
         url: "http://localhost:8081/service/rest/v1/status/writable"
@@ -16,7 +16,7 @@
 
     - name: Fetch the admin.password from the nexus3-oss container
       community.docker.docker_container_exec:
-        container: nexus3-community
+        container: nexus3-oss
         command: "cat /nexus-data/admin.password"
       register: __nexus_initial_admin_password__
 

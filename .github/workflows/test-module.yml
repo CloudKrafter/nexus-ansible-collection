@@ -2,10 +2,18 @@ name: Module Test
 
 on:
   push:
+    paths:
+      - 'tests/**'
+      - 'plugins/**'
+      - '.github/workflows/test-module.yml'
   pull_request:
     types:
       - review_requested
   workflow_dispatch:
+    inputs:
+        nxrm_version:
+          description: Nexus Repository Manager version (e.g. 3.78.2 )
+          default: latest
 
 permissions:
   contents: read
@@ -114,7 +122,7 @@ jobs:
 
     services:
       nexus:
-        image: sonatype/nexus3:latest
+        image: sonatype/nexus3:${{ github.event.inputs.nxrm_version || 'latest' }}
         ports:
           - 8081:8081
 
@@ -133,14 +141,6 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           ansible-galaxy collection install . --force
-
-      - name: Run integration tests
-        run: |
-          cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test integration download --docker default --coverage --continue-on-error -v
-        env:
-          PY_COLORS: '1'
-          ANSIBLE_FORCE_COLOR: '1'
       
       - name: Wait for Nexus startup
         run: |
@@ -197,10 +197,10 @@ jobs:
               }
             }'
 
-      - name: Run integration tests
+      - name: Run COMMUNITY integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test integration raw_component --coverage --continue-on-error -v
+          ansible-test integration --coverage --continue-on-error -v
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
@@ -230,7 +230,7 @@ jobs:
           directory: /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
           # files: reports/coverage.xml
           slug: CloudKrafter/nexus-ansible-collection
-          flags: integrationtests
+          flags: integrationtests-community
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Collect Nexus logs on failure

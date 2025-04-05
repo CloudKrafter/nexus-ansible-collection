@@ -4,7 +4,7 @@ nexus_api_hostname: localhost
 nexus_api_port: 8081
 nexus_api_validate_certs: "{{ nexus_api_scheme == 'https' }}"
 nexus_api_timeout: 60
-nexus_s3_endpoint: "http://172.18.0.4:9000"
+nexus_s3_endpoint: "http://localhost:9000"
 nexus_admin_username: admin
 nexus_admin_password: changeme
 nexus_enable_pro_version: true
@@ -154,17 +154,14 @@ nexus_ssl_truststore:
       port: 443
 
 nexus_security_realms:
-  - NexusAuthenticatingRealm
   - User-Token-Realm
-  - NuGetApiKey
-  - ConanToken
-  - Crowd
-  - DefaultRole
-  - DockerToken
-  - LdapRealm
-  - NpmToken
-  - rutauth-realm
-  - SamlRealm
+  - NexusAuthenticatingRealm
+#   - NuGetApiKey
+#   - ConanToken
+#   - DefaultRole
+#   - DockerToken
+#   - LdapRealm
+#   - NpmToken
 
 nexus_blobstores:
   - name: default
@@ -191,116 +188,116 @@ nexus_blobstores:
     softQuota:
       type: spaceUsedQuota
       limit: 209715200
-  - name: s3-blob-1
-    type: S3
-    softQuota:
-      type: spaceUsedQuota
-      limit: 104857600
-    bucketConfiguration:
-      bucket:
-        region: us-east-1
-        name: nexus-s3-1
-        prefix: ""
-        expiration: 3
-      failoverBuckets: []
-      activeRegion: us-east-1
-      bucketSecurity:
-        accessKeyId: nexus-access-key
-        secretAccessKey: nexus-secret-key
-      advancedBucketConnection:
-        endpoint: "{{ nexus_s3_endpoint }}"
-        forcePathStyle: true
-  - name: s3-blob-2
-    type: S3
-    softQuota:
-      type: spaceUsedQuota
-      limit: 104857600
-    bucketConfiguration:
-      bucket:
-        region: us-east-1
-        name: nexus-s3-2
-        expiration: 3
-      bucketSecurity:
-        accessKeyId: nexus-access-key
-        secretAccessKey: nexus-secret-key
-      advancedBucketConnection:
-        endpoint: "{{ nexus_s3_endpoint }}"
-        forcePathStyle: true
-  - name: s3-blob-3
-    type: S3
-    softQuota:
-      type: spaceUsedQuota
-      limit: 104857600
-    bucketConfiguration:
-      bucket:
-        region: us-east-1
-        name: nexus-s3-3
-        expiration: 3
-      bucketSecurity:
-        accessKeyId: nexus-access-key
-        secretAccessKey: nexus-secret-key
-      advancedBucketConnection:
-        endpoint: "{{ nexus_s3_endpoint }}"
-        forcePathStyle: true
-  - name: s3-blob-4
-    type: S3
-    softQuota:
-      type: spaceUsedQuota
-      limit: 104857600
-    bucketConfiguration:
-      bucket:
-        region: us-east-1
-        name: nexus-s3-4
-        expiration: 3
-      bucketSecurity:
-        accessKeyId: nexus-access-key
-        secretAccessKey: nexus-secret-key
-      advancedBucketConnection:
-        endpoint: "{{ nexus_s3_endpoint }}"
-        forcePathStyle: true
-  - name: s3-blob-5
-    type: S3
-    softQuota:
-      type: spaceUsedQuota
-      limit: 104857600
-    bucketConfiguration:
-      bucket:
-        region: us-east-1
-        name: nexus-s3-5
-        expiration: 3
-      bucketSecurity:
-        accessKeyId: nexus-access-key
-        secretAccessKey: nexus-secret-key
-      advancedBucketConnection:
-        endpoint: "{{ nexus_s3_endpoint }}"
-        forcePathStyle: true
-  - name: s3-grp
-    type: Group
-    softQuota:
-      type: spaceUsedQuota
-      limit: 104857600
-    members:
-      - s3-blob-1
-      - s3-blob-2
-    fillPolicy: roundRobin
-  - name: s3-grp-2
-    type: Group
-    softQuota:
-      type: spaceRemainingQuota
-      limit: 104857600
-    members:
-      - s3-blob-3
-      - s3-blob-4
-    fillPolicy: writeToFirst
-  - name: mixed-grp-1
-    type: Group
-    softQuota:
-      type: spaceUsedQuota
-      limit: 104857600
-    members:
-      - s3-blob-5
-      - file-quota-100-used
-    fillPolicy: roundRobin
+  # - name: s3-blob-1
+  #   type: S3
+  #   softQuota:
+  #     type: spaceUsedQuota
+  #     limit: 104857600
+  #   bucketConfiguration:
+  #     bucket:
+  #       region: us-east-1
+  #       name: nexus-s3-1
+  #       prefix: ""
+  #       expiration: 3
+  #     failoverBuckets: []
+  #     activeRegion: us-east-1
+  #     bucketSecurity:
+  #       accessKeyId: nexus-access-key
+  #       secretAccessKey: nexus-secret-key
+  #     advancedBucketConnection:
+  #       endpoint: "{{ nexus_s3_endpoint }}"
+  #       forcePathStyle: true
+  # - name: s3-blob-2
+  #   type: S3
+  #   softQuota:
+  #     type: spaceUsedQuota
+  #     limit: 104857600
+  #   bucketConfiguration:
+  #     bucket:
+  #       region: us-east-1
+  #       name: nexus-s3-2
+  #       expiration: 3
+  #     bucketSecurity:
+  #       accessKeyId: nexus-access-key
+  #       secretAccessKey: nexus-secret-key
+  #     advancedBucketConnection:
+  #       endpoint: "{{ nexus_s3_endpoint }}"
+  #       forcePathStyle: true
+  # - name: s3-blob-3
+  #   type: S3
+  #   softQuota:
+  #     type: spaceUsedQuota
+  #     limit: 104857600
+  #   bucketConfiguration:
+  #     bucket:
+  #       region: us-east-1
+  #       name: nexus-s3-3
+  #       expiration: 3
+  #     bucketSecurity:
+  #       accessKeyId: nexus-access-key
+  #       secretAccessKey: nexus-secret-key
+  #     advancedBucketConnection:
+  #       endpoint: "{{ nexus_s3_endpoint }}"
+  #       forcePathStyle: true
+  # - name: s3-blob-4
+  #   type: S3
+  #   softQuota:
+  #     type: spaceUsedQuota
+  #     limit: 104857600
+  #   bucketConfiguration:
+  #     bucket:
+  #       region: us-east-1
+  #       name: nexus-s3-4
+  #       expiration: 3
+  #     bucketSecurity:
+  #       accessKeyId: nexus-access-key
+  #       secretAccessKey: nexus-secret-key
+  #     advancedBucketConnection:
+  #       endpoint: "{{ nexus_s3_endpoint }}"
+  #       forcePathStyle: true
+  # - name: s3-blob-5
+  #   type: S3
+  #   softQuota:
+  #     type: spaceUsedQuota
+  #     limit: 104857600
+  #   bucketConfiguration:
+  #     bucket:
+  #       region: us-east-1
+  #       name: nexus-s3-5
+  #       expiration: 3
+  #     bucketSecurity:
+  #       accessKeyId: nexus-access-key
+  #       secretAccessKey: nexus-secret-key
+  #     advancedBucketConnection:
+  #       endpoint: "{{ nexus_s3_endpoint }}"
+  #       forcePathStyle: true
+  # - name: s3-grp
+  #   type: Group
+  #   softQuota:
+  #     type: spaceUsedQuota
+  #     limit: 104857600
+  #   members:
+  #     - s3-blob-1
+  #     - s3-blob-2
+  #   fillPolicy: roundRobin
+  # - name: s3-grp-2
+  #   type: Group
+  #   softQuota:
+  #     type: spaceRemainingQuota
+  #     limit: 104857600
+  #   members:
+  #     - s3-blob-3
+  #     - s3-blob-4
+  #   fillPolicy: writeToFirst
+  # - name: mixed-grp-1
+  #   type: Group
+  #   softQuota:
+  #     type: spaceUsedQuota
+  #     limit: 104857600
+  #   members:
+  #     - s3-blob-5
+  #     - file-quota-100-used
+  #   fillPolicy: roundRobin
   - name: file-grp-1
     type: Group
     softQuota:
@@ -312,21 +309,6 @@ nexus_blobstores:
     fillPolicy: roundRobin
 
 nexus_roles:
-  - id: "nx-admin"
-    name: "nx-admin"
-    description: "Administrator Role"
-    privileges:
-      - "nx-all"
-    roles: []
-  - id: "nx-anonymous"
-    name: "nx-anonymous"
-    description: "Anonymous Role"
-    privileges:
-      - "nx-healthcheck-read"
-      - "nx-search-read"
-      - "nx-repository-view-*-*-read"
-      - "nx-repository-view-*-*-browse"
-    roles: []
   - id: "nx-developer"
     name: "nx-developer"
     description: "Developer Role"
@@ -1691,7 +1673,7 @@ nexus_repos_maven_hosted:
     component:
       proprietaryComponents: false
     maven:
-      versionPolicy:
+      versionPolicy: RELEASE
       layoutPolicy: PERMISSIVE
       contentDisposition: ATTACHMENT
   - name: maven-snapshots
