@@ -186,10 +186,10 @@ class TestNexusInfoModule:
 
             call_args = mock_module.exit_json.call_args[1]
             assert call_args['changed'] is False
-            assert call_args['nexus_info']['node_id'] == node_data['node_id']
-            assert call_args['nexus_info']['version'] == node_data['version']
-            assert call_args['nexus_info']['edition'] == node_data['edition']
-            assert call_args['nexus_info']['details']['nexus-status']['edition'] == "COMMUNITY"
+            assert call_args['node']['node_id'] == node_data['node_id']
+            assert call_args['node']['version'] == node_data['version']
+            assert call_args['node']['edition'] == node_data['edition']
+            assert call_args['node']['details']['nexus-status']['edition'] == "COMMUNITY"
 
     def test_error_handling(self):
         """Test error handling in API calls"""

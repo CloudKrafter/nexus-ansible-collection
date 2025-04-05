@@ -50,14 +50,14 @@ EXAMPLES = '''
     username: "admin"
     password: "admin123"
     validate_certs: false
-  register: nexus_data
+  register: nexus_instance
 
 - debug:
-    var: nexus_data
+    var: nexus_instance.node
 '''
 
 RETURN = '''
-nexus_info:
+node:
   description: Aggregated Nexus node information
   returned: always
   type: dict
@@ -185,7 +185,7 @@ def main():
         # Return facts
         module.exit_json(
             changed=False,
-            nexus_info=node_info
+            node=node_info
         )
 
     except Exception as e:
