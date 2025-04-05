@@ -21,6 +21,7 @@
     headers:
       Accept: "application/json"
     status_code: 200
+  check_mode: false # force task to run in check mode
   register: __nexus_ssl_config__
   tags: ssl-truststore
 
@@ -42,6 +43,7 @@
     headers:
       Accept: "application/json"
     status_code: 200
+  check_mode: false # force task to run in check mode
   register: __nexus_fetched_ssl_certificates__
   loop: "{{ nexus_ssl_truststore.hostnames }}"
   when: nexus_ssl_truststore.hostnames is defined and nexus_ssl_truststore.hostnames | length > 0
