@@ -7,7 +7,7 @@
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
-DOCUMENTATION = r'''
+DOCUMENTATION = '''
 ---
 module: user_tokens
 short_description: Manage Nexus user token settings
@@ -16,7 +16,7 @@ description:
   - Enable/disable user tokens
   - Enable/disable user token requirement to access protected content
   - Configure token expiration
-version_added: "1.22.0"
+version_added: "1.23.0"
 options:
   state:
     description:
@@ -70,7 +70,7 @@ author:
   - "Brian Veltman (@cloudkrafter)"
 '''
 
-EXAMPLES = r'''
+EXAMPLES = '''
 - name: Enable user tokens with 90 days expiration
   cloudkrafter.nexus.user_tokens:
     state: present
@@ -97,7 +97,7 @@ EXAMPLES = r'''
 
 '''
 
-RETURN = r'''
+RETURN = '''
 changed:
     description: Whether the token settings were changed
     type: bool
