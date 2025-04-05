@@ -12,7 +12,7 @@ import json
 import pytest
 from unittest.mock import MagicMock, patch
 
-from ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info import (
+from ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info import (
     get_node_id,
     get_system_info,
     format_node_info,
@@ -22,7 +22,7 @@ from ansible_collections.cloudkrafter.nexus.plugins.module_utils.nexus_utils imp
 
 
 class TestNexusInfoModule:
-    """Tests for nexus_info module"""
+    """Tests for gather_info module"""
 
     def test_get_node_id(self):
         """Test getting node ID"""
@@ -35,7 +35,7 @@ class TestNexusInfoModule:
             'Server': 'Nexus/3.79.0-09 (COMMUNITY)'
         }
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
 
             result = get_node_id(
@@ -67,7 +67,7 @@ class TestNexusInfoModule:
         # Empty headers
         mock_response.headers = {}
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
 
             result = get_node_id(
@@ -95,7 +95,7 @@ class TestNexusInfoModule:
             }
         }).encode('utf-8')
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
 
             result = get_system_info(
@@ -171,9 +171,9 @@ class TestNexusInfoModule:
             }
         }
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.AnsibleModule') as mock_ansible_module, \
-                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.get_node_id') as mock_get_node_id, \
-                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.get_system_info') as mock_get_system_info:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.AnsibleModule') as mock_ansible_module, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.get_node_id') as mock_get_node_id, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.get_system_info') as mock_get_system_info:
 
             mock_ansible_module.return_value = mock_module
             mock_get_node_id.return_value = node_data
@@ -194,7 +194,7 @@ class TestNexusInfoModule:
     def test_error_handling(self):
         """Test error handling in API calls"""
         with pytest.raises(RepositoryError) as excinfo:
-            with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.nexus_info.open_url') as mock_open_url:
+            with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.open_url') as mock_open_url:
                 mock_open_url.side_effect = Exception("API Error")
 
                 get_node_id(

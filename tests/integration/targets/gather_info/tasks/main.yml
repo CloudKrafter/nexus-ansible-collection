@@ -9,7 +9,7 @@
   delay: 5
 
 - name: Gather Nexus information
-  cloudkrafter.nexus.nexus_info:
+  cloudkrafter.nexus.gather_info:
     url: http://localhost:8081
     username: admin
     password: changeme

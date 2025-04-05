@@ -10,7 +10,7 @@ __metaclass__ = type
 
 DOCUMENTATION = '''
 ---
-module: nexus_info
+module: gather_info
 short_description: Gather Nexus system information of a single node
 description:
   - Queries Sonatype Nexus REST API to retrieve system node ID and detailed system information.
@@ -45,7 +45,7 @@ author:
 
 EXAMPLES = '''
 - name: Gather Nexus information
-  cloudkrafter.nexus.nexus_info:
+  cloudkrafter.nexus.gather_info:
     url: "https://localhost:9091"
     username: "admin"
     password: "admin123"
@@ -53,7 +53,7 @@ EXAMPLES = '''
   register: nexus_data
 
 - debug:
-    var: nexus_data.nexus_info
+    var: nexus_data
 '''
 
 RETURN = '''
