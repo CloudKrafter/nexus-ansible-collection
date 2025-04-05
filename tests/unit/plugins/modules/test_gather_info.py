@@ -204,3 +204,30 @@ class TestNexusInfoModule:
                 )
 
         assert "Failed to get node ID: API Error" in str(excinfo.value)
+
+    def test_main_function_failure(self):
+        """Test main function error handling"""
+        module_args = {
+            'url': 'http://localhost:8081',
+            'username': 'admin',
+            'password': 'admin123',
+            'validate_certs': True
+        }
+
+        mock_module = MagicMock()
+        mock_module.params = module_args
+        mock_module.check_mode = False
+
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.AnsibleModule') as mock_ansible_module, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.gather_info.get_node_id') as mock_get_node_id:
+
+            mock_ansible_module.return_value = mock_module
+            mock_get_node_id.side_effect = RepositoryError("Failed to get node ID: Connection refused")
+
+            main()
+
+            # Verify fail_json was called with correct error message
+            mock_module.fail_json.assert_called_once()
+            call_args = mock_module.fail_json.call_args[1]
+            assert "Failed to get node ID: Connection refused" in call_args['msg']
+            mock_module.exit_json.assert_not_called()
