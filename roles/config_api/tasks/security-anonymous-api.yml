@@ -16,6 +16,7 @@
     headers:
       Accept: "application/json"
     status_code: 200
+  check_mode: false # force task to run in check mode
   register: __nexus_anonymous_config__
   tags: security-anonymous-access
 
