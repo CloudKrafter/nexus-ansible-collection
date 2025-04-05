@@ -230,7 +230,7 @@ jobs:
           directory: /home/runner/work/nexus-ansible-collection/nexus-ansible-collection/tests/output/
           # files: reports/coverage.xml
           slug: CloudKrafter/nexus-ansible-collection
-          flags: integrationtests
+          flags: integrationtests-community
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Collect Nexus logs on failure
