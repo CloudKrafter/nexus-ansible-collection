@@ -9,6 +9,7 @@
     password: "{{ nexus_admin_password }}"
     force_basic_auth: true
     timeout: "{{ nexus_api_timeout }}"
+  check_mode: false # force task to run in check mode
   register: __nexus_roles__
   tags: roles
 

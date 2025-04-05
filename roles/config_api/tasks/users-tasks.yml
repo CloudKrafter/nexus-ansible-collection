@@ -13,6 +13,7 @@
     force_basic_auth: true
     timeout: "{{ nexus_api_timeout }}"
     status_code: 200
+  check_mode: false # force task to run in check mode
   register: __nxs_crnt_usrs__
   tags: users
 

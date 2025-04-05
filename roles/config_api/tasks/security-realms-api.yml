@@ -42,6 +42,7 @@
     headers:
       Accept: "application/json"
     status_code: 200
+  check_mode: false # force task to run in check mode
   register: __nexus_security_realms_config__
   tags: security-realms
 
