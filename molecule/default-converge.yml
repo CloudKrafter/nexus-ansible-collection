@@ -13,6 +13,29 @@
     - nexus_common_test_vars.yml
     - nexus_ldap_test_vars.yml
 
+  tasks:
+    - name: Gather Nexus information
+      cloudkrafter.nexus.gather_info:
+        url: http://localhost:8081
+        username: admin
+        password: changeme
+        validate_certs: false
+      register: nexus_info
+
+    - name: Print Nexus information
+      vars:
+        info: |-
+          Version: {{ nexus_info.version }}
+          Edition: {{ nexus_info.edition }}
+          Node ID: {{ nexus_info.node_id }}
+          Details: {{ nexus_info.details is defined }}
+      ansible.builtin.debug:
+        msg: "{{ info.split('\n') }}"
+
+    - name: Print nexus facts
+      debug:
+        var: nexus_info
+
   environment:
     http_proxy: "{{ lookup('env', 'http_proxy') }}"
     https_proxy: "{{ lookup('env', 'https_proxy') }}"
