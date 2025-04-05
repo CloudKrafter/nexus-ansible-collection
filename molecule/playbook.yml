@@ -9,6 +9,17 @@
     - name: Install Nexus Pro License
       when: lookup('env', 'NEXUS_LICENSE_B64') | default(false, true)
       block:
+        - name: Gather Nexus Node Info
+          cloudkrafter.nexus.gather_info:
+            url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}"
+            username: "{{ nexus_admin_username }}"
+            password: "{{ nexus_admin_password }}"
+          register: nxrm_instance
+
+        - name: Set facts for Nexus Node
+          ansible.builtin.set_fact:
+            nexus_pro_version: "{{ nxrm_instance.node.edition == 'PRO' | default(false) }}"
+
         - name: Include license installation tasks
           ansible.builtin.include_role:
             name: cloudkrafter.nexus.config_api
