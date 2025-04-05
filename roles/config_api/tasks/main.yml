@@ -1,9 +1,9 @@
 ---
 - name: Gather Nexus Node Info
   cloudkrafter.nexus.gather_info:
-    url: "{{ nexus_url }}"
-    username: "{{ nexus_username }}"
-    password: "{{ nexus_password }}"
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}"
+    username: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
   register: nxrm_instance
   tags: always
 
