@@ -19,10 +19,10 @@
 - name: Print Nexus information
   vars:
     info: |-
-      Version: {{ ansible_facts.nexus.version }}
-      Edition: {{ ansible_facts.nexus.edition }}
-      Node ID: {{ ansible_facts.nexus.node_id }}
-      Details: {{ ansible_facts.nexus.details is defined }}
+      Version: {{ nexus_data.nexus_info.version }}
+      Edition: {{ nexus_data.nexus_info.edition }}
+      Node ID: {{ nexus_data.nexus_info.node_id }}
+      Details: {{ nexus_data.nexus_info.details is defined }}
   ansible.builtin.debug:
     msg: "{{ info.split('\n') }}"
 

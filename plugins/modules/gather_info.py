@@ -57,7 +57,7 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
-nexus:
+nexus_info:
   description: Aggregated Nexus node information
   returned: always
   type: dict
@@ -185,9 +185,7 @@ def main():
         # Return facts
         module.exit_json(
             changed=False,
-            ansible_facts=dict(
-                nexus=node_info
-            )
+            nexus_info=node_info
         )
 
     except Exception as e:
