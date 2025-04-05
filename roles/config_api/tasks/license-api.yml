@@ -14,14 +14,6 @@
     - license
     - always
 
-# Set fact to determine if we running pro already or nor
-- name: Set fact to determine if we're running pro version
-  ansible.builtin.set_fact:
-    nexus_pro_version: "{{ __nexus_license_info__.json.effectiveDate is defined | bool }}"
-  tags:
-    - license
-    - always
-
 - name: Remove license
   ansible.builtin.uri:
     url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/system/license"

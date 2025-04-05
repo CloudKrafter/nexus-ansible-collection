@@ -1,6 +1,5 @@
 # vars file for nexus3-config-as-code
 # these variables should never be set manually or overwritten by anything other than the role
-nexus_pro_version: false
 nxs_update_mvn_hosted_repos: []
 nxs_update_mvn_proxy_repos: []
 nxs_update_mvn_group_repos: []
