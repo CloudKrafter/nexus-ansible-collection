@@ -22,7 +22,7 @@
       Version: {{ ansible_facts.nexus.version }}
       Edition: {{ ansible_facts.nexus.edition }}
       Node ID: {{ ansible_facts.nexus.node_id }}
-      Details: {{ ansible_facts.nexus.details | bool }}
+      Details: {{ ansible_facts.nexus.details is defined }}
   ansible.builtin.debug:
     msg: "{{ info.split('\n') }}"
 
