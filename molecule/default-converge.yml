@@ -21,7 +21,7 @@
   tasks:
     - name: Gather Nexus information
       cloudkrafter.nexus.gather_info:
-        url: http://localhost:8081
+        url: http://localhost:9081
         username: admin
         password: changeme
         validate_certs: false
