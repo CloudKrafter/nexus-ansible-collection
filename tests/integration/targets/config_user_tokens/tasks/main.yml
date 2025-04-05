@@ -11,7 +11,7 @@
   when: nxrm_instance.node.edition == 'PRO'
   block:
     - name: Enable user tokens with 90 days expiration
-      cloudkrafter.nexus.user_tokens:
+      cloudkrafter.nexus.config_user_tokens:
         state: present
         expire_tokens: true
         expiration_days: 90
@@ -20,7 +20,7 @@
         password: changeme
 
     - name: Enable user tokens and require tokens for repository authentication
-      cloudkrafter.nexus.user_tokens:
+      cloudkrafter.nexus.config_user_tokens:
         state: present
         required_for_auth: true
         url: http://localhost:8081/repository/raw-hosted
@@ -28,14 +28,14 @@
         password: changeme
 
     - name: Disable user tokens
-      cloudkrafter.nexus.user_tokens:
+      cloudkrafter.nexus.config_user_tokens:
         state: absent
         url: http://localhost:8081/repository/raw-hosted
         username: admin
         password: changeme
 
     - name: Reset all user tokens
-      cloudkrafter.nexus.user_tokens:
+      cloudkrafter.nexus.config_user_tokens:
         state: present
         reset_tokens: true
         url: http://localhost:8081/repository/raw-hosted

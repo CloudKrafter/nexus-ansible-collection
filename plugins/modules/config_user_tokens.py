@@ -9,7 +9,7 @@ __metaclass__ = type
 
 DOCUMENTATION = '''
 ---
-module: user_tokens
+module: config_user_tokens
 short_description: Manage Nexus user token settings
 description:
   - Configure user token settings in Nexus Repository Manager
@@ -72,7 +72,7 @@ author:
 
 EXAMPLES = '''
 - name: Enable user tokens with 90 days expiration
-  cloudkrafter.nexus.user_tokens:
+  cloudkrafter.nexus.config_user_tokens:
     state: present
     expire_tokens: true
     expiration_days: 90
@@ -81,7 +81,7 @@ EXAMPLES = '''
     password: password
 
 - name: Enable user tokens and require tokens for repository authentication
-  cloudkrafter.nexus.user_tokens:
+  cloudkrafter.nexus.config_user_tokens:
     state: present
     required_for_auth: true
     url: https://nexus.example.com
@@ -89,7 +89,7 @@ EXAMPLES = '''
     password: password
 
 - name: Disable user tokens
-  cloudkrafter.nexus.user_tokens:
+  cloudkrafter.nexus.config_user_tokens:
     state: absent
     url: https://nexus.example.com
     username: username

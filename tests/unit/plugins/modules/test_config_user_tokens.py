@@ -12,7 +12,7 @@ __metaclass__ = type
 from unittest.mock import MagicMock, patch
 import pytest
 import json
-from ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens import (
+from ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens import (
     get_token_settings,
     update_token_settings
 )
@@ -34,7 +34,7 @@ class TestConfigUserTokensModule:
             "expirationDays": 30
         }).encode('utf-8')
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
 
             # Test successful API call
@@ -61,7 +61,7 @@ class TestConfigUserTokensModule:
             assert result['expirationDays'] == 30
 
         # Test error handling
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.open_url') as mock_open_url:
             mock_open_url.side_effect = Exception("API Error")
 
             with pytest.raises(RepositoryError) as excinfo:
@@ -88,7 +88,7 @@ class TestConfigUserTokensModule:
         mock_response.read.return_value = json.dumps(
             test_settings).encode('utf-8')
 
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.open_url') as mock_open_url:
             mock_open_url.return_value = mock_response
 
             # Test successful API call
@@ -123,7 +123,7 @@ class TestConfigUserTokensModule:
             assert result['expirationDays'] == 90
 
         # Test error handling
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.open_url') as mock_open_url:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.open_url') as mock_open_url:
             mock_open_url.side_effect = Exception("API Error")
 
             with pytest.raises(RepositoryError) as excinfo:
@@ -179,15 +179,15 @@ class TestConfigUserTokensModule:
 
         # Test successful update
         mock_module = setup_mock_module()
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.AnsibleModule') as mock_ansible_module, \
-                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.get_token_settings') as mock_get_settings, \
-                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.update_token_settings') as mock_update_settings:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.AnsibleModule') as mock_ansible_module, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.get_token_settings') as mock_get_settings, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.update_token_settings') as mock_update_settings:
 
             mock_ansible_module.return_value = mock_module
             mock_get_settings.return_value = current_settings
             mock_update_settings.return_value = updated_settings
 
-            from ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens import main
+            from ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens import main
             main()
 
             mock_module.fail_json.assert_not_called()
@@ -198,8 +198,8 @@ class TestConfigUserTokensModule:
 
         # Test no changes needed
         mock_module = setup_mock_module()
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.AnsibleModule') as mock_ansible_module, \
-                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.get_token_settings') as mock_get_settings:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.AnsibleModule') as mock_ansible_module, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.get_token_settings') as mock_get_settings:
 
             mock_ansible_module.return_value = mock_module
             mock_get_settings.return_value = updated_settings
@@ -215,8 +215,8 @@ class TestConfigUserTokensModule:
         # Test check mode
         mock_module = setup_mock_module()
         mock_module.check_mode = True
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.AnsibleModule') as mock_ansible_module, \
-                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.get_token_settings') as mock_get_settings:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.AnsibleModule') as mock_ansible_module, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.get_token_settings') as mock_get_settings:
 
             mock_ansible_module.return_value = mock_module
             mock_get_settings.return_value = current_settings
@@ -231,8 +231,8 @@ class TestConfigUserTokensModule:
 
         # Test error handling
         mock_module = setup_mock_module()
-        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.AnsibleModule') as mock_ansible_module, \
-                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config.user_tokens.get_token_settings') as mock_get_settings:
+        with patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.AnsibleModule') as mock_ansible_module, \
+                patch('ansible_collections.cloudkrafter.nexus.plugins.modules.config_user_tokens.get_token_settings') as mock_get_settings:
 
             mock_ansible_module.return_value = mock_module
             mock_get_settings.side_effect = Exception("Test error")
