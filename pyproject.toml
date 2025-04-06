@@ -5,10 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "ansible",
-    "coverage",
-    "docker>",
-    "jmespath>",
-    "molecule",
-    "molecule-plugins",
+    "ansible>=6.7.0",
+    "coverage>=7.6.1",
+    "docker>=7.1.0",
+    "jmespath>=1.0.1",
+    "molecule>=4.0.4",
+    "molecule-plugins>=23.0.0",
 ]
