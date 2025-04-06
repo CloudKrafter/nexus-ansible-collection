@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "ansible>=11.4.0",
-    "coverage==7.3.2",
+    "coverage>=7.3.2",
     "docker>=7.1.0",
     "jmespath>=1.0.1",
     "molecule>=25.4.0",

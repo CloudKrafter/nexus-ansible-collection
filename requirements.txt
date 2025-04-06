@@ -1,5 +1,5 @@
 ansible
-coverage==7.3.2
+coverage
 docker
 jmespath
 molecule
