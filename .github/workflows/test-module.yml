@@ -22,13 +22,16 @@ jobs:
   module:
     name: Sanity & Unit Tests
     runs-on: ubuntu-latest
+    env:
+      # Configure a constant location for the uv cache
+      UV_CACHE_DIR: /tmp/.uv-cache
 
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
         with:
           python-version: |
             3.8
@@ -36,19 +39,17 @@ jobs:
             3.10
             3.11
             3.12
-          cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install the project
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          uv sync --all-extras --dev
           # Install the local collection
-          ansible-galaxy collection install . --force
+          uv run ansible-galaxy collection install . --force
 
       - name: Run Sanity Tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test sanity plugins/modules/ plugins/module_utils/ tests/ --docker default
+          uv run ansible-test sanity plugins/modules/ plugins/module_utils/ tests/
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
@@ -56,7 +57,7 @@ jobs:
       - name: Run Unit tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test units --docker default --coverage
+          uv run ansible-test units --docker default --coverage
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
@@ -64,7 +65,7 @@ jobs:
       - name: Generate code coverage report
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test coverage xml
+          uv run ansible-test coverage xml
 
       - name: Copy test output files
         run: |
@@ -118,6 +119,9 @@ jobs:
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest
+    env:
+      # Configure a constant location for the uv cache
+      UV_CACHE_DIR: /tmp/.uv-cache
     needs: module
 
     services:
@@ -130,17 +134,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv and set the python version
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.10'
-          cache: 'pip'
+          python-version: |
+            3.8
+            3.9
+            3.10
+            3.11
+            3.12
 
-      - name: Install dependencies
+      - name: Install the project
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          ansible-galaxy collection install . --force
+          uv sync --all-extras --dev
+          # Install the local collection
+          uv run ansible-galaxy collection install . --force
       
       - name: Wait for Nexus startup
         run: |
@@ -200,7 +208,7 @@ jobs:
       - name: Run COMMUNITY integration tests
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test integration --coverage --continue-on-error -v
+          uv run ansible-test integration --coverage --continue-on-error -v
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
@@ -208,7 +216,7 @@ jobs:
       - name: Generate code coverage report
         run: |
           cd /home/runner/.ansible/collections/ansible_collections/cloudkrafter/nexus
-          ansible-test coverage xml
+          uv run ansible-test coverage xml
 
       - name: Copy test output files
         run: |
