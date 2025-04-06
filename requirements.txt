@@ -4,3 +4,7 @@ docker
 jmespath
 molecule
 molecule-plugins
+pytest
+pytest-ansible
+pytest-cov
+pytest-mock

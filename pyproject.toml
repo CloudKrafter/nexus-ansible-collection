@@ -11,4 +11,8 @@ dependencies = [
     "jmespath>=1.0.1",
     "molecule>=4.0.4",
     "molecule-plugins>=23.0.0",
+    "pytest>=7.4.4",
+    "pytest-ansible>=4.1.1",
+    "pytest-cov>=5.0.0",
+    "pytest-mock>=3.14.0",
 ]
