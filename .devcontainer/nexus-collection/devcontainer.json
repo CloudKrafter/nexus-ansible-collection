@@ -15,7 +15,7 @@
 			"installTools": false,
 			"version": "3.12"
 		},
-		"ghcr.io/hspaans/devcontainer-features/ansible-lint:1": {
+		"ghcr.io/hspaans/devcontainer-features/ansible-lint:2": {
 			"version": "latest"
 		},
 		// "ghcr.io/devcontainers-contrib/features/ansible:2": {
