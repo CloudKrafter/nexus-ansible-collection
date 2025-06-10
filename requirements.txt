@@ -66,7 +66,7 @@ python-daemon==3.1.0
 python-gnupg==0.5.3
 PyYAML==6.0.2
 referencing==0.35.1
-requests==2.32.3
+requests==2.32.4
 resolvelib==1.0.1
 rich==13.9.4
 rpds-py==0.21.0
