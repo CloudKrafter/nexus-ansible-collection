@@ -193,13 +193,13 @@ the role. It can be used later in your playbook if needed (e.g. for an upgrade n
 
 ### Postgres database
 
-FOR PRO VERSION ONLY!!
+Postgresql is available in both community and pro installation of the Sonatype Nexus product : https://help.sonatype.com/en/database-options.html
 
-please review these steps first: https://help.sonatype.com/repomanager3/installation-and-upgrades/configuring-nexus-repository-pro-for-h2-or-postgresql#ConfiguringNexusRepositoryProforH2orPostgreSQL-ConfiguringforExternalPostgreSQL(Preferred)
+
+Please review these steps first: https://help.sonatype.com/repomanager3/installation-and-upgrades/configuring-nexus-repository-pro-for-h2-or-postgresql#ConfiguringNexusRepositoryProforH2orPostgreSQL-ConfiguringforExternalPostgreSQL(Preferred)
 
 Then make sure your Postgres instance has the following requirements: https://help.sonatype.com/repomanager3/product-information/sonatype-nexus-repository-system-requirements#SonatypeNexusRepositorySystemRequirements-PostgreSQL(Recommended)BluePRO
 
-**NOTE:** You have to use a Pro license. It may look like Nexus will work with postgres without importing a license, but it doesn't. Nexus will start but you won't be able to login. See [Enabling Nexus Pro](#nexus-pro).
 
 When ready add the following variables to your playbook;
 Keep in mind this works for installing NEW or existing Nexus instances running Postgres only! This will **NOT** migrate your existing Orient/H2 database to Postgres!!
@@ -213,6 +213,7 @@ nexus_postgres_db_hosts:
     password: nexus
 ```
 
+#### Cluster postgresql installation
 When using a Postgres cluster, you can define multiple pgbouncers.
 ```yaml
 nexus_use_postgres: true
@@ -237,7 +238,7 @@ You want to avoid a situation where a database write goes to one PostgreSQL inst
 
 Pgbouncers that all point towards the same Postgres instance is fine.
 
-#### Database Connection assignment in Cluster/HA mode
+#### (PRO only) Database Connection assignment in Cluster/HA mode
 Sonatype recommends to run your Nexus instances within a single cloud region or on-premises data center.
 Therefore this role will distribute the pgbouncers evenly across all servers within the same `inventory group`.
 
