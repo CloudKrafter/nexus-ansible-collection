@@ -7,6 +7,7 @@ nexus_version: ""
 # nexus_version_running: <unset>
 
 nexus_download_dir: /tmp
+nexus_force_download: false  # Normally the installer will only be downloaded when the desired version isn't installed
 nexus_local_tmp_dir: /tmp # On shared ansible controller, change this to a path you own (i.e. /home/<user>/tmp)
 nexus_download_timeout: 120
 nexus_os_group: nexus
