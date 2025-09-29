@@ -4,8 +4,8 @@ nexus_api_hostname: localhost
 nexus_api_port: 8081
 nexus_api_validate_certs: "{{ nexus_api_scheme == 'https' }}"
 nexus_api_timeout: 60
-nexus_admin_username: admins
-nexus_admin_password: admin
+nexus_admin_username: admin
+nexus_admin_password: changeme
 nexus_default_role: nx-admin
 ldap_connections:
   - name: Mock ldap server STATIC # Required
