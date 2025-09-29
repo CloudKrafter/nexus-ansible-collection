@@ -46,7 +46,7 @@ jobs:
           cache: 'pip'
 
       - name: Install test dependencies.
-        run: pip3 install ansible molecule molecule-plugins[docker] docker jmespath
+        run: pip3 install -r requirements.txt
 
       - name: Run Molecule tests.
         run: molecule test -s ${{ matrix.distro }} -- -vv
