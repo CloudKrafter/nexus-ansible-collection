@@ -36,9 +36,6 @@ provisioner:
   playbooks:
     prepare: prepare.yml
     converge: converge.yml
-  inventory:
-    links:
-      group_vars: group_vars/
 
 scenario:
   create_sequence:

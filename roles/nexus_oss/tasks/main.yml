@@ -371,7 +371,6 @@
     name: cloudkrafter.nexus.config_api
     tasks_from: security-anonymous-api.yml
 
-
 - name: Configure base url
   ansible.builtin.include_tasks: call_script.yml
   vars:
@@ -397,17 +396,6 @@
     status_code: 200
   register: __nexus_existing_capabilities__
 
-
-
-
-# - name: Print the registered output
-#   ansible.builtin.debug:
-#     var: __nexus_existing_capabilities__
-
-# - name: Pause for 30 seconds
-#   ansible.builtin.pause:
-#     seconds: 9999
-
 - name: Configure RUT Auth header
   ansible.builtin.include_tasks: create_capability.yml
   vars:
@@ -417,17 +405,6 @@
       properties:
         httpHeader: "{{ nexus_rut_auth_header }}"
   when: nexus_rut_auth_header is defined
-
-# - name: Configure RUT Auth header
-#   ansible.builtin.include_tasks: call_script.yml
-#   vars:
-#     script_name: setup_capability
-#     call_args:
-#       capability_typeId: rutauth
-#       capability_enabled: true
-#       capability_properties:
-#         httpHeader: "{{ nexus_rut_auth_header }}"
-#   when: nexus_rut_auth_header is defined
 
 - name: Configure mail server
   ansible.builtin.uri:
@@ -465,21 +442,6 @@
         footerEnabled: "{{ nexus_branding_footer | length > 0 }}"
         headerEnabled: "{{ nexus_branding_header | length > 0 }}"
 
-# - name: Configure branding capability
-#   ansible.builtin.include_tasks: call_script.yml
-#   vars:
-#     script_name: setup_capability
-#     call_args:
-#       capability_typeId: rapture.branding
-#       capability_enabled: "{{ (nexus_branding_footer | length > 0) and (nexus_branding_header | length > 0) }}"
-#       capability_properties:
-#         footerHtml: "{{ nexus_branding_footer }}"
-#         headerHtml: "{{ nexus_branding_header }}"
-#         footerEnabled: "{{ nexus_branding_footer | length > 0 }}"
-#         headerEnabled: "{{ nexus_branding_header | length > 0 }}"
-
-
-
 - name: Configure audit capability
   ansible.builtin.include_tasks: create_capability.yml
   vars:
@@ -487,16 +449,6 @@
       type: audit
       enabled: "{{ nexus_audit_enabled | bool }}"
       properties: {}
-
-# - name: Configure audit capability
-#   ansible.builtin.include_tasks: call_script.yml
-#   vars:
-#     script_name: setup_capability
-#     call_args:
-#       capability_typeId: audit
-#       capability_enabled: "{{ nexus_audit_enabled | bool }}"
-#       capability_properties: {}
-
 
 - name: Configure log4j-visualizer capability
   ansible.builtin.include_tasks: create_capability.yml
@@ -507,18 +459,6 @@
       properties: {}
   when: nexus_log4j_supported
 
-      
-# - name: Configure log4j-visualizer capability
-#   ansible.builtin.include_tasks: call_script.yml
-#   vars:
-#     script_name: setup_capability
-#     call_args:
-#       capability_typeId: log4j-visualizer
-#       capability_enabled: "{{ nexus_log4j_visualizer_enabled | bool }}"
-#       capability_properties: {}
-#   when: nexus_log4j_supported
-
-
 - name: Configure Default Role capability
   ansible.builtin.include_tasks: create_capability.yml
   vars:
@@ -528,16 +468,6 @@
       properties:
         role: "{{ nexus_default_role }}"
   when: "{{ (nexus_default_role | length > 0) }}"
-
-# - name: Configure Default Role capability
-#   ansible.builtin.include_tasks: call_script.yml
-#   vars:
-#     script_name: setup_capability
-#     call_args:
-#       capability_typeId: defaultrole
-#       capability_enabled: "{{ (nexus_default_role | length > 0) }}"
-#       capability_properties:
-#      role: "{{ nexus_default_role }}"
 
 - name: Define backup task if backup is configured
   ansible.builtin.set_fact:

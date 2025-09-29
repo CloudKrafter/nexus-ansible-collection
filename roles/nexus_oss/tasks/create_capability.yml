@@ -1,11 +1,3 @@
-- name: print1
-  ansible.builtin.debug:
-    var: __nexus_existing_capabilities__.json
-
-- name: print2
-  ansible.builtin.debug:
-    var: api_payload
-
 - name: Append id to API payload
   set_fact:
     api_payload_create: "{{ api_payload | combine({'notes': 'configured through web api'}) }}"
@@ -23,9 +15,6 @@
     body: "{{ api_payload_create }}"
     status_code: 200
     timeout: "{{ nexus_api_timeout | int }}"
-  # loop: "{{ api_payload }}"
-  # loop_control:
-  #   loop_var: blobstore
   when: "api_payload.type not in __nexus_existing_capabilities__.json | map(attribute='type') | list"
 
 
@@ -44,9 +33,6 @@
     api_payload_update: "{{ api_payload | combine({'id': capability_id}) }}"
   when: api_payload.type in (__nexus_existing_capabilities__.json | map(attribute='type') | list)
 
-- name: print3
-  ansible.builtin.debug:
-    var: api_payload_update
 
 - name: Update capability when capability exists
   ansible.builtin.uri:
@@ -61,15 +47,3 @@
     status_code: 204
     timeout: "{{ nexus_api_timeout | int }}"
   when: "api_payload.type  in __nexus_existing_capabilities__.json | map(attribute='type') | list"
-
-- name: print1
-  ansible.builtin.debug:
-    var: __nexus_existing_capabilities__.json
-
-- name: print2
-  ansible.builtin.debug:
-    var: api_payload
-
-# - name: Pause for 30 seconds
-#   ansible.builtin.pause:
-#     seconds: 9999
