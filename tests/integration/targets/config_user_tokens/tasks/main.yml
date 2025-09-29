@@ -1,0 +1,43 @@
+- name: Gather Nexus info
+  cloudkrafter.nexus.gather_info:
+    url: http://localhost:8081
+    username: admin
+    password: changeme
+  register: nxrm_instance
+
+# User Tokens are only available in Nexus Repository Pro
+# This integration test will only run if Nexus Repository Pro edition is detected
+- name: Configure User Tokens
+  when: nxrm_instance.node.edition == 'PRO'
+  block:
+    - name: Enable user tokens with 90 days expiration
+      cloudkrafter.nexus.config_user_tokens:
+        state: present
+        expire_tokens: true
+        expiration_days: 90
+        url: http://localhost:8081/repository/raw-hosted
+        username: admin
+        password: changeme
+
+    - name: Enable user tokens and require tokens for repository authentication
+      cloudkrafter.nexus.config_user_tokens:
+        state: present
+        required_for_auth: true
+        url: http://localhost:8081/repository/raw-hosted
+        username: admin
+        password: changeme
+
+    - name: Disable user tokens
+      cloudkrafter.nexus.config_user_tokens:
+        state: absent
+        url: http://localhost:8081/repository/raw-hosted
+        username: admin
+        password: changeme
+
+    - name: Reset all user tokens
+      cloudkrafter.nexus.config_user_tokens:
+        state: present
+        reset_tokens: true
+        url: http://localhost:8081/repository/raw-hosted
+        username: admin
+        password: changeme

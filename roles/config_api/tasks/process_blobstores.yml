@@ -1,0 +1,153 @@
+- name: Reset full_existing_blobstores and desired_blobstores fact
+  ansible.builtin.set_fact:
+    full_existing_blobstores: []
+    desired_blobstores: []
+  tags: blobstores
+
+- name: Filter existing blobstores of type {{ type }}
+  ansible.builtin.set_fact:
+    existing_blobstores: "{{ all_blobstores.json | selectattr('type', 'equalto', type) | list }}"
+  tags: blobstores
+
+- name: Get full details of each {{ type }} blobstore
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/blobstores/{{ type | lower }}/{{ blobstore.name }}"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+  register: blobstore_details
+  loop: "{{ existing_blobstores }}"
+  loop_control:
+    label: "{{ blobstore.name }}"
+    loop_var: blobstore
+  tags: blobstores
+
+- name: Extract relevant details from full {{ type }} blobstores
+  ansible.builtin.set_fact:
+    full_existing_blobstores: "{{ full_existing_blobstores | default([]) + [{'name': result.blobstore.name, 'path': result.json.path, 'softQuota': {'limit': result.json.softQuota.limit | default(omit), 'type': result.json.softQuota.type | default(omit)}}] }}"
+  loop: "{{ blobstore_details.results }}"
+  loop_control:
+    label: "{{ result.blobstore.name }}"
+    loop_var: result
+  tags: blobstores
+
+- name: Set fact for desired {{ type }} blobstores
+  ansible.builtin.set_fact:
+    desired_blobstores: "{{ nexus_blobstores | selectattr('type', 'equalto', type) | list }}"
+  tags: blobstores
+
+- name: Determine {{ type }} blobstores to create
+  ansible.builtin.set_fact:
+    nxs_create_blobstores: "{{ desired_blobstores | rejectattr('name', 'in', existing_blobstores | map(attribute='name') | list) | list }}"
+  tags: blobstores
+
+- name: Show {{ type }} blobstores to create
+  ansible.builtin.debug:
+    var: nxs_create_blobstores | length
+  tags: blobstores
+
+- name: Create {{ type }} blobstores
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/blobstores/{{ type | lower }}"
+    method: POST
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    status_code: 204
+    headers:
+      Accept: "application/json"
+    body: "{{ blobstore }}"
+    body_format: json
+  loop: "{{ nxs_create_blobstores }}"
+  loop_control:
+    loop_var: blobstore
+  when: nxs_create_blobstores | length > 0
+  changed_when: true
+  tags: blobstores
+
+- name: Set fact for {{ type }} blobstores to update
+  ansible.builtin.set_fact:
+    nxs_update_blobstores: []
+  tags: blobstores
+
+# TODO: Implement and test S3 and Azure blobstores comparison logic
+# Compare task might need to be extended to include the fields unique to S3 and Azure blobstores
+# But you want those fields to be compared only when the {{ type }} is S3 or Azure.
+# So we could add a kind of constructor to build the comparison logic dynamically.
+# This way, we can avoid code duplication and keep the task clean and maintainable.
+# The constructor could be a Jinja2 template that takes the {{ type }} as an argument.
+# The template would then generate the comparison logic based on the {{ type }}.
+- name: Compare {{ type }} blobstores for changes
+  ansible.builtin.set_fact:
+    nxs_update_blobstores: "{{ nxs_update_blobstores + [blobstore] }}"
+  loop: "{{ desired_blobstores }}"
+  loop_control:
+    loop_var: blobstore
+  when: >
+    (full_existing_blobstores | selectattr('name', 'equalto', blobstore.name) | first) is not defined or
+    (full_existing_blobstores | selectattr('name', 'equalto', blobstore.name) | first).softQuota is not defined and blobstore.softQuota is defined or
+    (full_existing_blobstores | selectattr('name', 'equalto', blobstore.name) | first).softQuota is defined and blobstore.softQuota is not defined or
+    (full_existing_blobstores | selectattr('name', 'equalto', blobstore.name) | first).softQuota.limit | default(omit) != blobstore.softQuota.limit | default(omit) or
+    (full_existing_blobstores | selectattr('name', 'equalto', blobstore.name) | first).softQuota.type | default(omit) != blobstore.softQuota.type | default(omit) or
+    (full_existing_blobstores | selectattr('name', 'equalto', blobstore.name) | first).path | default(omit) != blobstore.path | default(omit)
+  tags: blobstores
+
+- name: Show {{ type }} blobstores to update
+  ansible.builtin.debug:
+    var: nxs_update_blobstores | length
+  tags: blobstores
+
+- name: Update {{ type }} blobstores
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/blobstores/{{ type | lower }}/{{ blobstore.name }}"
+    method: PUT
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    status_code: 204
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+    body: "{{ blobstore }}"
+    body_format: json
+  loop: "{{ nxs_update_blobstores }}"
+  loop_control:
+    loop_var: blobstore
+  when: nxs_update_blobstores | length > 0
+  changed_when: true
+  tags: blobstores
+
+- name: Determine {{ type }} blobstores to delete
+  ansible.builtin.set_fact:
+    nxs_delete_blobstores: "{{ existing_blobstores | rejectattr('name', 'in', nexus_blobstores | map(attribute='name') | list) | list }}"
+  tags: blobstores
+
+- name: Show {{ type }} blobstores to delete
+  ansible.builtin.debug:
+    var: nxs_delete_blobstores | length
+  tags: blobstores
+
+- name: Delete {{ type }} blobstores
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/blobstores/{{ blobstore.name }}"
+    method: DELETE
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    status_code: 204
+  loop: "{{ nxs_delete_blobstores }}"
+  loop_control:
+    loop_var: blobstore
+  when: nxs_delete_blobstores | length > 0 and nexus_enforce_desired_state | bool
+  changed_when: true
+  tags: blobstores

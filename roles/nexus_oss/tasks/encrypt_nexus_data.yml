@@ -1,0 +1,69 @@
+---
+- name: Create encryption config file from template
+  ansible.builtin.template:
+    src: "encryption-key.json.j2"
+    dest: "{{ nexus_encryption_key_file }}"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0640"
+  notify:
+    - nexus-service-restart
+  when:
+    - nexus_encryption_keys is defined
+    - nexus_encryption_keys | length > 0
+  tags: nexus-encrypt
+
+- name: Set encryption file in {{ nexus_data_dir }}/etc/nexus.properties
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_data_dir }}/etc/nexus.properties"
+    line: "nexus.secrets.file={{ nexus_encryption_key_file }}"
+    firstmatch: true
+    insertafter: "EOF"
+    state: present
+  tags: nexus-encrypt
+  notify:
+    - nexus-service-restart
+
+- name: Force restart of nexus service
+  ansible.builtin.meta: flush_handlers
+  tags: nexus-encrypt
+
+- name: Wait for Nexus writable API endpoint to be available
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/status/writable"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 200
+    timeout: "{{ nexus_api_timeout }}"
+  register: __nexus_writable__
+  until: __nexus_writable__.status == 200
+  retries: "{{ nexus_api_availability_retries }}"
+  delay: "{{ nexus_api_availability_delay }}"
+  tags: nexus-encrypt
+
+- name: Get system health
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/status/check"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: GET
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+  register: __nexus_health__
+  tags: nexus-encrypt
+
+- name: Re-encrypt Nexus data
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/secrets/encryption/re-encrypt"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: PUT
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    body:
+      secretKeyId: "{{ nexus_active_encryption_key_id }}"
+    status_code: 202
+  changed_when: true
+  when: not nexus_active_encryption_key_id in __nexus_health__.json['Default Secret Encryption Key'].message
+  tags: nexus-encrypt

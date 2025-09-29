@@ -5,16 +5,20 @@ httpd_ssl_cert_file_location: "{{ default_cert }}"
 httpd_ssl_cert_key_location: "{{ default_key }}"
 nexus_public_hostname: localhost
 nexus_api_timeout: 45
+nexus_default_port: 9081
+nexus_api_port: 9081
+nexus_hostname: localhost
+
+nexus_admin_password: changeme
+nexus_admin_username: admin
 
 nexus_custom_jvm_settings:
   - XX:+UseG1GC
-  - XX:+PrintGCDetails
-  - Xloggc:{{ nexus_data_dir }}/log/gc.log
+  # - XX:+PrintGCDetails
+  # - Xloggc:{{ nexus_installation_dir }}log/gc.log
   # - XX:+UseGCLogFileRotation
   # - XX:NumberOfGCLogFiles=10
   # - XX:GCLogFileSize=50m
-  - XX:+UnlockDiagnosticVMOptions
-  - XX:+LogVMOutput
 
 nexus_download_dir: /nexus-downloads
 
@@ -22,6 +26,15 @@ nexus_backup_configure: true
 
 nexus_delete_default_repos: true
 nexus_delete_default_blobstore: true
+
+# Nexus encryption key
+nexus_encryption_keys:
+  - id: custom-key1
+    secret: some-encryption-key
+  - id: custom-key2
+    secret: another-encryption-key
+nexus_active_encryption_key_id: custom-key1
+nexus_encryption_key_file: /var/nexus/encryption-key.json
 
 nexus_blob_split: true
 
@@ -43,164 +56,209 @@ nexus_config_go: true
 nexus_config_bower: false
 nexus_config_p2: true
 nexus_config_cocoapods: true
+nexus_config_composer: true
 
 nexus_anonymous_access: true
 
 nexus_audit_enabled: true
 
-nexus_rut_auth_realm: false
-nexus_rut_auth_header: CUSTOM_RUT_HEADER
+# nexus_rut_auth_realm: false
+# nexus_rut_auth_header: CUSTOM_RUT_HEADER
+
+nexus_repos_routing_rules:
+  - name: routing-rule-block-nmap
+    description: routing-rule-1
+    mode: BLOCK
+    matchers:
+      - ".*nmap"
+  - name: routing-rule-allow-patch-update
+    description: rrouting-rule-2
+    mode: ALLOW
+    matchers:
+      - ".*patch"
+      - ".*update"
+  - name: routing-rule-allow-all
+    description: routing-rule-3
+    mode: ALLOW
+    matchers:
+      - ".*"
+  - name: routing-rule-block-all
+    description: routing-rule-4
+    mode: BLOCK
+    matchers:
+      - ".*"
 
 nexus_repos_cleanup_policies:
-# Needs work, format ALL is not supported through API
   # - name: all_cleanup
-  #   format: "all"
+  #   format: all
   #   notes: "All"
-  #   criteriaLastBlobUpdated: 60
-  #   criteriaLastDownloaded: 120
+  #   criteria:
+  #     lastBlobUpdated: 60
+  #     lastDownloaded: 120
   - name: mvn_cleanup
     format: maven2
     notes: "mvn"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
   - name: mvn_releases_cleanup
     format: maven2
     notes: "mvn RELEASES"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaReleaseType: RELEASES
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      isPrerelease: RELEASES
   - name: mvn_prereleases_cleanup
     format: maven2
     notes: "mvn PRERELEASES"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaReleaseType: PRERELEASES
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      isPrerelease: PRERELEASES
   - name: python_cleanup
     format: pypi
     notes: "Python pip"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: docker_cleanup
     format: docker
     notes: "Docker"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: raw_cleanup
     format: raw
     notes: "Raw"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: rubygems_cleanup
     format: rubygems
     notes: "Rubygems"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: npm_cleanup
     format: npm
     notes: ""
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      regexKey: "beta-*"
   - name: npm_releases_cleanup
     format: npm
     notes: "npm RELEASES"
-    criteriaAssetRegex: "beta-*"
-    criteriaReleaseType: RELEASES
+    criteria:
+      regexKey: "beta-*"
+      isPrerelease: RELEASES
   - name: npm_prereleases_cleanup
     format: npm
     notes: "npm PRERELEASES"
-    criteriaAssetRegex: "beta-*"
-    criteriaReleaseType: PRERELEASES
+    criteria:
+      regexKey: "beta-*"
+      isPrerelease: PRERELEASES
   - name: nuget_cleanup
     format: nuget
     notes: "NuGet"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: gitlfs_cleanup
     format: gitlfs
     notes: "gitlfs"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
   - name: yum_prerelease_cleanup
     format: yum
     notes: "yum PRERELEASES"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
-    criteriaReleaseType: PRERELEASES
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
+      isPrerelease: PRERELEASES
   - name: yum_release_cleanup
     format: yum
     notes: "yum RELEASES"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
-    criteriaReleaseType: RELEASES
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
+      isPrerelease: RELEASES
   - name: yum_cleanup
     format: yum
     notes: "yum"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: apt_cleanup
     format: apt
     notes: "apt"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: helm_cleanup
     format: helm
     notes: "Helm"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: r_cleanup
     format: r
     notes: "r"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: conda_cleanup
     format: conda
     notes: "conda"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: go_cleanup
     format: go
     notes: "go"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: cocoapods_cleanup
     format: cocoapods
     notes: "cocoapods"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: conan_cleanup
     format: conan
     notes: "conan"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
   - name: p2_cleanup
     format: p2
     notes: "p2"
-    criteriaLastBlobUpdated: 60
-    criteriaLastDownloaded: 120
-    criteriaAssetRegex: "beta-*"
-  - name: remove-release-containers
-    format: docker
-    notes: "Policy for removing that were considered release at some time"
-    criteriaLastBlobUpdated: 90
-    criteriaLastDownloaded:
-    criteriaReleaseType:
-    criteriaAssetRegex: 
-    retain: 5
-
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
+  - name: composer_cleanup
+    format: composer
+    notes: "composer"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
+      regexKey: "beta-*"
 nexus_repos_maven_proxy:
   - name: central-blob-default-permissive-http-authentication
     remote_url: https://repo1.maven.org/maven2/
@@ -480,19 +538,19 @@ nexus_repos_rubygems_group:
       - rubygems-hosted
       - rubygems-proxy
 
-# nexus_repos_bower_proxy:
-#   - name: bower-proxy
-#     remote_url: https://bower.herokuapp.com/
+nexus_repos_bower_proxy:
+  - name: bower-proxy
+    remote_url: https://bower.herokuapp.com/
 
-# nexus_repos_bower_hosted:
-#   - name: bower-hosted
-#     write_policy: allow
+nexus_repos_bower_hosted:
+  - name: bower-hosted
+    write_policy: allow
 
-# nexus_repos_bower_group:
-#   - name: bower-all
-#     member_repos:
-#       - bower-hosted
-#       - bower-proxy
+nexus_repos_bower_group:
+  - name: bower-all
+    member_repos:
+      - bower-hosted
+      - bower-proxy
 
 nexus_repos_helm_hosted:
   - name: helm-hosted
@@ -556,6 +614,10 @@ nexus_repos_p2_proxy:
   - name: p2-proxy
     remote_url: http://download.eclipse.org/technology/epp/packages/oxygen/
 
+nexus_repos_composer_proxy:
+  - name: composer-proxy
+    remote_url: https://packagist.org/
+
 nexus_repos_cocoapods_proxy:
   - name: cocoapods-proxy
     remote_url: https://cdn.cocoapods.org/
@@ -565,7 +627,7 @@ nexus_content_selectors:
   # https://help.sonatype.com/repomanager3/formats/docker-registry/content-selectors-and-docker
   - name: docker-login-search
     description: Selector for docker login privilege
-    search_expression: format == "docker" and (path == "/v2/" of path == "/v1/search")
+    search_expression: format == "docker" and (path == "/v2/" or path == "/v1/search")
   - name: docker-private-team1
     description: Selector for docker team1
     search_expression: format == "docker" and path =^ "/v2/team1/"
@@ -576,10 +638,16 @@ nexus_content_selectors:
 nexus_privileges:
   - name: all-repos-read
     description: Read & Browse access to all repos
+    type: repository-view
     repository: "*"
+    format: "*"
     actions:
       - read
       - browse
+  - name: all-repos-read-default
+    description: Read & Browse access to all repos
+    type: repository-view
+    repository: "*"
   - name: wildcard1
     type: wildcard
     description: first wilcard
@@ -589,15 +657,22 @@ nexus_privileges:
     description: some nexus configuration
     domain: some_nexus_domain
     actions:
-      - some action
-  - name: script1
+      - all
+  # - name: script1
+  #   type: script
+  #   description: first script
+  #   script_name: setup_capability
+  #   actions:
+  #     - all
+  - name: script-new-syntax
     type: script
-    description: first script
-    script_name: the_script_name
+    description: second script
+    scriptName: setup_base_url
     actions:
-      - some actions
+      - all
   - name: docker-login-search-all
     type: repository-content-selector
+    format: docker
     contentSelector: docker-login-search
     description: Login to and search docker registry
     repository: "*"
@@ -605,17 +680,29 @@ nexus_privileges:
       - read
   - name: docker-private-team1-rw
     type: repository-content-selector
+    format: docker
     contentSelector: docker-private-team1
     description: write access to /team1 namespace on docker-private
     repository: docker-private
     actions:
-      - read,
+      - read
       - add
       - edit
       - browse
   - name: docker-private-team2-rw
     type: repository-content-selector
+    format: docker
     contentSelector: docker-private-team2
+    description: write access to /team2 namespace on docker-hosted
+    repository: docker-private
+    actions:
+      - read
+      - add
+      - edit
+      - browse
+  - name: admin-docker-private-team2-rw
+    type: repository-admin
+    format: docker
     description: write access to /team2 namespace on docker-hosted
     repository: docker-private
     actions:
@@ -648,8 +735,25 @@ nexus_roles:
     description: team2
     privileges:
       - docker-private-team2-rw
+  - name: role-no-priviliges
+    id: role-no-privs
+    description: role without privileges assigned
 
 nexus_local_users:
+  - username: anonymous
+    first_name: Anonymous
+    last_name: User
+    email: anonymous@example.org
+    password: s3cr3t
+    roles:
+      - nx-anonymous
+  - username: admin
+    first_name: Administrator
+    last_name: User
+    email: admin@example.org
+    password: changeme
+    roles:
+      - nx-admin
   - username: jenkins
     first_name: Jenkins
     last_name: CI
@@ -657,8 +761,6 @@ nexus_local_users:
     password: s3cr3t
     roles:
       - developers
-  - username: olduser # make sure this old account is removed
-    state: absent
   - username: test_roles
     first_name: Test
     last_name: Roles

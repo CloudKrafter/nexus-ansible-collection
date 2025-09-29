@@ -1,0 +1,123 @@
+---
+- name: Prepare Nexus3
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Gather facts about the nexus3-oss container
+      community.docker.docker_container_info:
+        name: nexus3-oss
+      register: nexus3_info
+
+    - name: Set nexus3_ip variable for podman network
+      ansible.builtin.set_fact:
+        nexus3_ip: localhost
+      when: "'podman' in nexus3_info.container.NetworkSettings.Networks"
+
+    - name: Set nexus3_ip variable for bridge network
+      ansible.builtin.set_fact:
+        nexus3_ip: "{{ nexus3_info.container.NetworkSettings.Networks.bridge.IPAddress }}"
+      when: "'bridge' in nexus3_info.container.NetworkSettings.Networks"
+
+    - name: Show nexus3_ip
+      ansible.builtin.debug:
+        var: nexus3_ip
+
+    - name: Wait for Nexus writable API endpoint to be available
+      ansible.builtin.uri:
+        url: "http://{{ nexus3_ip }}:8081/service/rest/v1/status/writable"
+        method: GET
+        validate_certs: false
+        status_code: 200
+      register: __nexus_writable__
+      until: __nexus_writable__.status == 200
+      retries: 30
+      delay: 10
+
+    - name: Fetch the admin.password from the nexus3-oss container
+      community.docker.docker_container_exec:
+        container: nexus3-oss
+        command: "cat /nexus-data/admin.password"
+      register: __nexus_initial_admin_password__
+
+    - name: Update password of admin user
+      ansible.builtin.uri:
+        url: "http://{{ nexus3_ip }}:8081/service/rest/v1/security/users/admin/change-password"
+        user: admin
+        password: "{{ __nexus_initial_admin_password__.stdout }}"
+        method: PUT
+        force_basic_auth: true
+        validate_certs: false
+        status_code: 204
+        headers:
+          Content-Type: text/plain
+          accept: application/json
+        body: "changeme"
+        body_format: raw
+
+    - name: Disable Anonmous access
+      ansible.builtin.uri:
+        url: "http://{{ nexus3_ip }}:8081/service/rest/v1/security/anonymous"
+        user: admin
+        password: changeme
+        method: PUT
+        force_basic_auth: true
+        validate_certs: false
+        status_code: 200
+        body: |
+          {
+            "enabled": false,
+            "userId": "anonymous",
+            "realmName": "NexusAuthorizingRealm"
+          }
+        body_format: json
+
+    # - name: Create license file
+    #   ansible.builtin.copy:
+    #     content: "{{ lookup('env', 'NEXUS_LICENSE_B64') | b64decode }}"
+    #     dest: "nexus.lic"
+    #     mode: '0644'
+    #   register: __license_status__
+    #   when: (lookup('env', 'NEXUS_LICENSE_B64') is defined or nexus_license_b64 is defined) and nexus_enable_pro
+
+    # - name: Upload license file through API
+    #   ansible.builtin.uri:
+    #     url: "http://{{ nexus3_ip }}:8081/service/rest/v1/system/license"
+    #     method: POST
+    #     validate_certs: false
+    #     user: admin
+    #     password: changeme
+    #     force_basic_auth: true
+    #     headers:
+    #       Accept: "application/json"
+    #       Content-Type: "application/octet-stream"
+    #     src: "nexus.lic"
+    #     status_code: 200
+    #   register: __uploaded_license__
+    #   when: (lookup('env', 'NEXUS_LICENSE_B64') is defined or nexus_license_b64 is defined) and nexus_enable_pro
+    #   ignore_errors: true
+
+    # - name: Remove license from file system
+    #   ansible.builtin.file:
+    #     path: "nexus.lic"
+    #     state: absent
+
+    # - name: Stop container
+    #   community.docker.docker_container:
+    #     name: nexus3-oss
+    #     state: stopped
+
+    # - name: Start container
+    #   community.docker.docker_container:
+    #     name: nexus3-oss
+    #     state: started
+
+    # - name: Wait for Nexus writable API endpoint to be available
+    #   ansible.builtin.uri:
+    #     url: "http://{{ nexus3_ip }}:8081/service/rest/v1/status/writable"
+    #     method: GET
+    #     validate_certs: false
+    #     status_code: 200
+    #   register: __nexus_writable__
+    #   until: __nexus_writable__.status == 200
+    #   retries: 30
+    #   delay: 10

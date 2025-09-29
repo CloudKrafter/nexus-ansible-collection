@@ -1,0 +1,349 @@
+- name: Normalize Rubygems proxy repositories
+  ansible.builtin.set_fact:
+    nexus_repos_rubygems_proxy_normalized: >
+      {{ nexus_repos_rubygems_proxy | cloudkrafter.nexus.normalize_repositories(
+          nexus_repos_global_defaults,
+          nexus_repos_type_defaults,
+          nexus_repos_format_defaults,
+          'proxy',
+          'rubygems',
+          legacy_field_map
+        ) }}
+  tags:
+    - rubygems
+    - rubygems-proxy
+
+- name: Normalize Rubygems hosted repositories
+  ansible.builtin.set_fact:
+    nexus_repos_rubygems_hosted_normalized: >
+      {{ nexus_repos_rubygems_hosted | cloudkrafter.nexus.normalize_repositories(
+          nexus_repos_global_defaults,
+          nexus_repos_type_defaults,
+          nexus_repos_format_defaults,
+          'hosted',
+          'rubygems',
+          legacy_field_map
+        ) }}
+  tags:
+    - rubygems
+    - rubygems-hosted
+
+- name: Normalize Rubygems group repositories
+  ansible.builtin.set_fact:
+    nexus_repos_rubygems_group_normalized: >
+      {{ nexus_repos_rubygems_group | cloudkrafter.nexus.normalize_repositories(
+          nexus_repos_global_defaults,
+          nexus_repos_type_defaults,
+          nexus_repos_format_defaults,
+          'group',
+          'rubygems',
+          legacy_field_map
+        ) }}
+  tags:
+    - rubygems
+    - rubygems-group
+
+# Need filtered facts for existing repositories because the API has different endpoints for each type and format
+- name: Filter existing rubygems repositories
+  ansible.builtin.set_fact:
+    __nxs_crnt_rubygems_hstd__: "{{ __nxs_all_repos__.json | selectattr('format', 'equalto', 'rubygems') | selectattr('type', 'equalto', 'hosted') | list }}"
+    __nxs_crnt_rubygems_prxy__: "{{ __nxs_all_repos__.json | selectattr('format', 'equalto', 'rubygems') | selectattr('type', 'equalto', 'proxy') | list }}"
+    __nxs_crnt_rubygems_grp__: "{{ __nxs_all_repos__.json | selectattr('format', 'equalto', 'rubygems') | selectattr('type', 'equalto', 'group') | list }}"
+  tags: repositories
+
+- name: Determine rubygems repositories to create
+  ansible.builtin.set_fact:
+    nxs_create_rubygems_hosted_repos: "{{ nexus_repos_rubygems_hosted_normalized | rejectattr('name', 'in', __nxs_crnt_rubygems_hstd__ | map(attribute='name') | list) | list }}"
+    nxs_create_rubygems_proxy_repos: "{{ nexus_repos_rubygems_proxy_normalized | rejectattr('name', 'in', __nxs_crnt_rubygems_prxy__ | map(attribute='name') | list) | list }}"
+    nxs_create_rubygems_group_repos: "{{ nexus_repos_rubygems_group_normalized | rejectattr('name', 'in', __nxs_crnt_rubygems_grp__ | map(attribute='name') | list) | list }}"
+  tags: repositories
+
+- name: Determine rubygems repositories to delete
+  ansible.builtin.set_fact:
+    nxs_delete_rubygems_hosted_repos: "{{ __nxs_crnt_rubygems_hstd__ | rejectattr('name', 'in', nexus_repos_rubygems_hosted_normalized | map(attribute='name') | list) | list }}"
+    nxs_delete_rubygems_proxy_repos: "{{ __nxs_crnt_rubygems_prxy__ | rejectattr('name', 'in', nexus_repos_rubygems_proxy_normalized | map(attribute='name') | list) | list }}"
+    nxs_delete_rubygems_group_repos: "{{ __nxs_crnt_rubygems_grp__ | rejectattr('name', 'in', nexus_repos_rubygems_group_normalized | map(attribute='name') | list) | list }}"
+  tags: repositories
+
+- name: Compare rubygems hosted repositories for changes
+  ansible.builtin.set_fact:
+    nxs_update_rubygems_hosted_repos: "{{ nxs_update_rubygems_hosted_repos + [item] }}"
+  loop: "{{ nexus_repos_rubygems_hosted_normalized | rejectattr('name', 'in', nxs_create_rubygems_hosted_repos | map(attribute='name') | list) | list }}"
+  when: >
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first) is not defined or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).format | default('rubygems') != item.format | default('rubygems') or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).type | default('hosted') != item.type | default('hosted') or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).online | default(true) != item.online | default(true) or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).cleanup.policyNames | default([]) | sort != item.cleanup.policyNames | default([]) | sort or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).storage.blobStoreName | default(omit) != item.storage.blobStoreName | default(None) or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).storage.strictContentTypeValidation | default(false) != item.storage.strictContentTypeValidation | default(false) or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).storage.writePolicy | default(omit) | upper != item.storage.writePolicy | default(None) | upper or
+    (__nxs_crnt_rubygems_hstd__ | selectattr('name', 'equalto', item.name) | first).component.proprietaryComponents | default(false) != item.component.proprietaryComponents | default(false)
+  tags:
+    - rubygems
+    - rubygems-hosted
+
+- name: Compare rubygems proxy repositories for changes
+  ansible.builtin.set_fact:
+    nxs_update_rubygems_proxy_repos: "{{ nxs_update_rubygems_proxy_repos + [item] }}"
+  loop: "{{ nexus_repos_rubygems_proxy_normalized | rejectattr('name', 'in', nxs_create_rubygems_proxy_repos | map(attribute='name') | list) | list }}"
+  # TODO: implement replication
+  when: >
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first) is not defined or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).format | default('rubygems') != item.format | default('rubygems') or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).type | default('proxy') != item.type | default('proxy') or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).online | default(true) != item.online | default(true) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).storage.blobStoreName | default(omit) != item.storage.blobStoreName | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).storage.strictContentTypeValidation | default(false) != item.storage.strictContentTypeValidation | default(false) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).cleanup.policyNames | default([]) | sort != item.cleanup.policyNames | default([]) | sort or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).proxy.remoteUrl | default(omit) != item.proxy.remoteUrl | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).proxy.contentMaxAge | default(omit) != item.proxy.contentMaxAge | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).proxy.metadataMaxAge | default(omit) != item.proxy.metadataMaxAge | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).negativeCache.enabled | default(false) != item.negativeCache.enabled | default(false) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).negativeCache.timeToLive | default(omit) != item.negativeCache.timeToLive | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.blocked | default(false) != item.httpClient.blocked | default(false) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.autoBlock | default(false) != item.httpClient.autoBlock | default(false) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.connection.retries | default(omit) != item.httpClient.connection.retries | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.connection.userAgentSuffix | default(omit) != item.httpClient.connection.userAgentSuffix | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.connection.timeout | default(omit) != item.httpClient.connection.timeout | default(None) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.connection.enableCircularRedirects | default(false) != item.httpClient.connection.enableCircularRedirects | default(false) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.connection.enableCookies | default(false) != item.httpClient.connection.enableCookies | default(false) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.connection.useTrustStore | default(false) != item.httpClient.connection.useTrustStore | default(false) or
+    (
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.authentication is not none and
+        item.httpClient.authentication is none
+    ) or
+    (
+        (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.authentication is none and
+        item.httpClient.authentication is not none
+    ) or
+    (
+        (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.authentication is not none and
+        item.httpClient.authentication is not none and
+        (
+            (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.authentication.type | default(None) != item.httpClient.authentication.type | default(None) or
+            (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.authentication.username | default(None) != item.httpClient.authentication.username | default(None) or
+            (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.authentication.ntlmHost | default(None) != item.httpClient.authentication.ntlmHost | default(None) or
+            (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).httpClient.authentication.ntlmDomain | default(None) != item.httpClient.authentication.ntlmDomain | default(None)
+        )
+    ) or
+    (__nxs_crnt_rubygems_prxy__ | selectattr('name', 'equalto', item.name) | first).routingRuleName | default(omit) != item.routingRule | default(None)
+  tags:
+    - rubygems
+    - rubygems-hosted
+
+- name: Compare rubygems group repositories for changes
+  ansible.builtin.set_fact:
+    nxs_update_rubygems_group_repos: "{{ nxs_update_rubygems_group_repos + [item] }}"
+  loop: "{{ nexus_repos_rubygems_group_normalized | rejectattr('name', 'in', nxs_create_rubygems_group_repos | map(attribute='name') | list) | list }}"
+  when: >
+    (__nxs_crnt_rubygems_grp__ | selectattr('name', 'equalto', item.name) | first) is not defined or
+    (__nxs_crnt_rubygems_grp__ | selectattr('name', 'equalto', item.name) | first).format | default('rubygems') != item.format | default('rubygems') or
+    (__nxs_crnt_rubygems_grp__ | selectattr('name', 'equalto', item.name) | first).type | default('group') != item.type | default('group') or
+    (__nxs_crnt_rubygems_grp__ | selectattr('name', 'equalto', item.name) | first).online | default(true) != item.online | default(true) or
+    (__nxs_crnt_rubygems_grp__ | selectattr('name', 'equalto', item.name) | first).storage.blobStoreName | default(omit) != item.storage.blobStoreName | default(None) or
+    (__nxs_crnt_rubygems_grp__ | selectattr('name', 'equalto', item.name) | first).storage.strictContentTypeValidation | default(false) != item.storage.strictContentTypeValidation | default(false) or
+    (__nxs_crnt_rubygems_grp__ | selectattr('name', 'equalto', item.name) | first).group.memberNames | default([]) | sort != item.group.memberNames | default([]) | sort
+  tags: rubygems
+
+- name: Show nxs_create_rubygems_hosted_repos
+  ansible.builtin.debug:
+    var: nxs_create_rubygems_hosted_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_create_rubygems_hosted_repos | length > 0
+  tags:
+    - rubygems
+    - rubygems-hosted
+
+- name: Show nxs_create_rubygems_proxy_repos
+  ansible.builtin.debug:
+    var: nxs_create_rubygems_proxy_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_create_rubygems_proxy_repos | length > 0
+  tags:
+    - rubygems
+    - rubygems-proxy
+
+- name: Show nxs_create_rubygems_group_repos
+  ansible.builtin.debug:
+    var: nxs_create_rubygems_group_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_create_rubygems_group_repos | length > 0
+  tags: rubygems
+
+- name: Show nxs_update_rubygems_hosted_repos
+  ansible.builtin.debug:
+    var: nxs_update_rubygems_hosted_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_update_rubygems_hosted_repos | length > 0
+  tags:
+    - rubygems
+    - rubygems-hosted
+
+- name: Show nxs_update_rubygems_proxy_repos
+  ansible.builtin.debug:
+    var: nxs_update_rubygems_proxy_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_update_rubygems_proxy_repos | length > 0
+  tags:
+    - rubygems
+    - rubygems-proxy
+
+- name: Show nxs_update_rubygems_group_repos
+  ansible.builtin.debug:
+    var: nxs_update_rubygems_group_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_update_rubygems_group_repos | length > 0
+  tags: rubygems
+
+- name: Show nxs_delete_rubygems_hosted_repos
+  ansible.builtin.debug:
+    var: nxs_delete_rubygems_hosted_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_delete_rubygems_hosted_repos | length > 0
+  tags:
+    - rubygems
+    - rubygems-hosted
+
+- name: Show nxs_delete_rubygems_proxy_repos
+  ansible.builtin.debug:
+    var: nxs_delete_rubygems_proxy_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_delete_rubygems_proxy_repos | length > 0
+  tags:
+    - rubygems
+    - rubygems-proxy
+
+- name: Show nxs_delete_rubygems_group_repos
+  ansible.builtin.debug:
+    var: nxs_delete_rubygems_group_repos
+  when: nexus_config_dry_run
+  changed_when: nxs_delete_rubygems_group_repos | length > 0
+  tags: rubygems
+
+- name: Apply Rubygems repository changes
+  block:
+    - name: Create configured rubygems Hosted repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ item | default([]) }}"
+        format: rubygems
+        type: hosted
+        method: POST
+      with_items:
+        - "{{ nxs_create_rubygems_hosted_repos | default([]) }}"
+      when: nxs_create_rubygems_hosted_repos | length > 0
+      tags:
+        - rubygems
+        - rubygems-hosted
+
+    - name: Create configured rubygems Proxy repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ item | default([]) }}"
+        format: rubygems
+        type: proxy
+        method: POST
+      with_items:
+        - "{{ nxs_create_rubygems_proxy_repos | default([]) }}"
+      when: nxs_create_rubygems_proxy_repos | length > 0
+      tags:
+        - rubygems
+        - rubygems-proxy
+
+    - name: Create configured rubygems Group repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ item | default([]) }}"
+        format: rubygems
+        type: group
+        method: POST
+      with_items:
+        - "{{ nxs_create_rubygems_group_repos | default([]) }}"
+      when: nxs_create_rubygems_group_repos | length > 0
+      tags: rubygems
+
+    - name: Update configured rubygems Hosted repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ item | default([]) }}"
+        format: rubygems
+        type: hosted
+        method: PUT
+      with_items:
+        - "{{ nxs_update_rubygems_hosted_repos | default([]) }}"
+      when: nxs_update_rubygems_hosted_repos | length > 0
+      tags:
+        - rubygems
+        - rubygems-hosted
+
+    - name: Update configured rubygems Proxy repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ item | default([]) }}"
+        format: rubygems
+        type: proxy
+        method: PUT
+      with_items:
+        - "{{ nxs_update_rubygems_proxy_repos | default([]) }}"
+      when: nxs_update_rubygems_proxy_repos | length > 0
+      tags:
+        - rubygems
+        - rubygems-proxy
+
+    - name: Update configured rubygems Group repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ item | default([]) }}"
+        format: rubygems
+        type: group
+        method: PUT
+      with_items:
+        - "{{ nxs_update_rubygems_group_repos | default([]) }}"
+      when: nxs_update_rubygems_group_repos | length > 0
+      tags: rubygems
+
+    - name: Delete rubygems Hosted repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ nxs_delete_rubygems_hosted_repos | default([]) }}"
+        format: rubygems
+        type: hosted
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_rubygems_hosted_repos | default([]) }}"
+      when: nxs_delete_rubygems_hosted_repos | length > 0 and nexus_enforce_desired_state | bool
+      tags:
+        - rubygems
+        - rubygems-hosted
+
+    - name: Delete rubygems Proxy repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ nxs_delete_rubygems_proxy_repos | default([]) }}"
+        format: rubygems
+        type: proxy
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_rubygems_proxy_repos | default([]) }}"
+      when: nxs_delete_rubygems_proxy_repos | length > 0 and nexus_enforce_desired_state | bool
+      tags:
+        - rubygems
+        - rubygems-proxy
+
+    - name: Delete rubygems Group repositories using Nexus API
+      ansible.builtin.include_tasks: repositories-api.yml
+      vars:
+        repos: "{{ nxs_delete_rubygems_group_repos | default([]) }}"
+        format: rubygems
+        type: group
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_rubygems_group_repos | default([]) }}"
+      when: nxs_delete_rubygems_group_repos | length > 0 and nexus_enforce_desired_state | bool
+      tags: rubygems
+  when: not nexus_config_dry_run
+  tags:
+    - rubygems
+    - rubygems-hosted
+    - rubygems-proxy

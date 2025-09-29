@@ -1,0 +1,79 @@
+---
+- name: Gather Nexus Node Info
+  cloudkrafter.nexus.gather_info:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}"
+    username: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+  register: nxrm_instance
+  tags: always
+
+- name: Set facts for Nexus Node
+  ansible.builtin.set_fact:
+    nexus_pro_version: "{{ nxrm_instance.node.edition == 'PRO' | default(false) }}"
+  tags: always
+
+- name: Include license-api
+  ansible.builtin.include_tasks: license-api.yml
+  tags:
+    - license
+    - always
+
+- name: Include security-anonymous-api
+  ansible.builtin.include_tasks: security-anonymous-api.yml
+  tags: security-anonymous-access
+
+- name: Include user-tokens-api
+  ansible.builtin.include_tasks: user-tokens-api.yml
+  when: nexus_pro_version | bool
+  tags: user-tokens
+
+- name: Include ssl-truststore-api
+  ansible.builtin.include_tasks: ssl-truststore-api.yml
+  tags: ssl-truststore
+
+- name: Include LDAP configuration
+  ansible.builtin.include_tasks: ldap-tasks.yml
+  tags: ldap
+
+- name: Include security-realms-api
+  ansible.builtin.include_tasks: security-realms-api.yml
+  tags: security-realms
+
+- name: Include cleanup-policies-tasks
+  ansible.builtin.include_tasks: cleanup-policies-tasks.yml
+  when: nexus_pro_version | bool
+  tags: cleanup-policies
+
+- name: Include routing-rules-tasks
+  ansible.builtin.include_tasks: routing-rules-tasks.yml
+  tags: routing-rules
+
+- name: Include content-selectors-tasks
+  ansible.builtin.include_tasks: content-selectors-tasks.yml
+  tags: content-selectors
+
+- name: Include blobstore-tasks
+  ansible.builtin.include_tasks: blobstore-tasks.yml
+  tags: blobstores
+
+- name: Include repositories-tasks
+  ansible.builtin.include_tasks: repositories-tasks.yml
+  tags: repositories
+
+# Priviliges always need to be created BEFORE the roles and AFTER the repositories
+# This is because the roles can have privileges that are created when repositories are created
+- name: Include privileges-tasks
+  ansible.builtin.include_tasks: privileges-tasks.yml
+  tags: privileges
+
+# Roles always need to be created after the repositories
+# This is because the roles can have privileges that are created when repositories are created
+- name: Include roles-tasks
+  ansible.builtin.include_tasks: roles-tasks.yml
+  tags: roles
+
+# Users always need to be created after the roles
+# This is because the users can have roles or privileges that are created earlier.
+- name: Include users-tasks
+  ansible.builtin.include_tasks: users-tasks.yml
+  tags: users

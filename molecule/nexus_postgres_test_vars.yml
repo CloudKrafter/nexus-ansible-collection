@@ -1,16 +1,15 @@
 nexus_purge: false
-nexus_run_provisionning: true
-nexus_use_api_for_provisioning: true
+nexus_run_provisionning: false
+nexus_use_api_for_provisioning: false
 
-nexus_db_migrator_version: 3.73.0-03
-nexus_db_migrator_download_url: https://nexus.ontwikkel.local/repository/tpe-repo/nexus/nxrm3-migrator
-nexus_download_url: "https://nexus.ontwikkel.local/repository/tpe-repo/nexus"
-nexus_version: "3.73.0-12"
-nexus_java_version: 17
-nexus_download_ssl_verify: false
+nexus_db_migrator_version: 3.68.0-04
+nexus_db_migrator_download_url: https://download.sonatype.com/nexus/nxrm3-migrator
 
 # Enable Pro features
 nexus_enable_pro_version: true
+nexus_cluster_enabled: true
+
+nexus_config_dry_run: true
 
 # Postgres migration settings
 nexus_migrate_database: false
@@ -24,7 +23,7 @@ nexus_migrate_force: true
 # Using Postgres as the initial database? Set nexus_use_postgres to true
 nexus_use_postgres: true
 
-nexus_postgres_db_host: 10.88.0.31
+nexus_postgres_db_host: 172.19.0.5
 nexus_postgres_db_name: nexus
 nexus_postgres_db_port: 5432
 nexus_postgres_db_username: nexus

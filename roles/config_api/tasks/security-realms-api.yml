@@ -1,0 +1,79 @@
+---
+- name: Define realm mappings for backwards compatibility with nexus_oss role
+  ansible.builtin.set_fact:
+    realm_mappings:
+      nexus_nuget_api_key_realm: NuGetApiKey
+      nexus_npm_bearer_token_realm: NpmToken
+      nexus_rut_auth_realm: rutauth-realm
+      nexus_ldap_realm: LdapRealm
+      nexus_docker_bearer_token_realm: DockerToken
+  tags: security-realms
+
+- name: Collect nexus_oss based variables into a dictionary
+  ansible.builtin.set_fact:
+    nexus_realms_nexus_oss:
+      nexus_nuget_api_key_realm: "{{ nexus_nuget_api_key_realm | default(false) }}"
+      nexus_npm_bearer_token_realm: "{{ nexus_npm_bearer_token_realm | default(false) }}"
+      nexus_rut_auth_realm: "{{ nexus_rut_auth_realm | default(false) }}"
+      nexus_ldap_realm: "{{ nexus_ldap_realm | default(false) }}"
+      nexus_docker_bearer_token_realm: "{{ nexus_docker_bearer_token_realm | default(false) }}"
+  tags: security-realms
+
+- name: Normalize security realms configuration if nexus_security_realms is empty
+  ansible.builtin.set_fact:
+    nexus_security_realms_normalized: >-
+      {{
+        nexus_security_realms
+        if nexus_security_realms | length > 1 and
+           (nexus_security_realms | difference(['NexusAuthenticatingRealm']) | length > 0) else
+        nexus_realms_nexus_oss | cloudkrafter.nexus.normalize_security_realms(realm_mappings=realm_mappings)
+      }}
+  tags: security-realms
+
+- name: Get status of Security Realms configuration
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/realms/active"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+  check_mode: false # force task to run in check mode
+  register: __nexus_security_realms_config__
+  tags: security-realms
+
+- name: Set fact for current_nexus_security_realms_config
+  ansible.builtin.set_fact:
+    current_nexus_security_realms_config: "{{ __nexus_security_realms_config__.json }}"
+  when: __nexus_security_realms_config__.status == 200
+  tags: security-realms
+
+- name: Set fact for desired_nexus_security_realms_config
+  ansible.builtin.set_fact:
+    desired_nexus_security_realms_config: "{{ nexus_security_realms_normalized }}"
+  tags: security-realms
+
+- name: Configure Security Realms order
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/realms/active"
+    method: PUT
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+    body: "{{ desired_nexus_security_realms_config | to_json }}"
+    status_code: 204
+  register: __nexus_security_realms_config_update__
+  when: current_nexus_security_realms_config != desired_nexus_security_realms_config
+  # The API always returns 204, even if the configuration is not changed
+  # So we need to check if the configuration is changed to be idempotent
+  changed_when: current_nexus_security_realms_config != desired_nexus_security_realms_config
+  tags: security-realms

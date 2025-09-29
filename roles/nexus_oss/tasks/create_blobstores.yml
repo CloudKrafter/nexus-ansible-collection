@@ -1,0 +1,34 @@
+---
+- name: Create blobstores
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/blobstores/{{ blobstore.type }}"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: POST
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    body: "{{ blobstore }}"
+    status_code: 204
+    timeout: "{{ nexus_api_timeout | int }}"
+  loop: "{{ api_payload }}"
+  loop_control:
+    loop_var: blobstore
+  when: blobstore.name not in __nexus_existing_blobstores__.json | map(attribute='name') | list
+
+# - name: Update blobstores when blobstore exists
+#   ansible.builtin.uri:
+#     url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/blobstores/{{ blobstore.type }}/{{ blobstore.name }}"
+#     user: admin
+#     password: "{{ current_nexus_admin_password }}"
+#     method: PUT
+#     force_basic_auth: true
+#     validate_certs: "{{ nexus_api_validate_certs }}"
+#     body_format: json
+#     body: "{{ blobstore }}"
+#     status_code: 204
+#     timeout: "{{ nexus_api_timeout | int }}"
+#   loop: "{{ api_payload }}"
+#   loop_control:
+#     loop_var: blobstore
+#   when: blobstore.name in __nexus_existing_blobstores__.json | map(attribute='name') | list

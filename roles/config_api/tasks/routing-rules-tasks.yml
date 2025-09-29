@@ -1,0 +1,89 @@
+- name: Get all routing rules
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/routing-rules"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 200
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+  check_mode: false # force task to run in check mode
+  register: __nxs_crnt_rtng_rls__
+  tags: routing-rules
+
+- name: Determine routing rules to create
+  ansible.builtin.set_fact:
+    nxs_create_routingrules: "{{ nexus_repos_routing_rules | rejectattr('name', 'in', __nxs_crnt_rtng_rls__.json | map(attribute='name') | list) | list }}"
+  tags: routing-rules
+
+- name: Determine routing rules to delete
+  ansible.builtin.set_fact:
+    nxs_delete_routingrules: "{{ __nxs_crnt_rtng_rls__.json | rejectattr('name', 'in', nexus_repos_routing_rules | map(attribute='name') | list) | list }}"
+  tags: routing-rules
+
+- name: Compare routing rules for changes
+  ansible.builtin.set_fact:
+    nxs_update_routingrules: "{{ nxs_update_routingrules + [item] }}"
+  loop: "{{ nexus_repos_routing_rules | list }}"
+  when: >
+    ( __nxs_crnt_rtng_rls__.json | selectattr('name', 'equalto', item.name) | first) is not defined or
+    ( __nxs_crnt_rtng_rls__.json | selectattr('name', 'equalto', item.name) | first).description | default(omit) != item.description | default(omit) or
+    ( __nxs_crnt_rtng_rls__.json | selectattr('name', 'equalto', item.name) | first).mode | default(omit) != item.mode | default(None) or
+    ( __nxs_crnt_rtng_rls__.json | selectattr('name', 'equalto', item.name) | first).matchers | default(omit) != item.matchers | default(omit)
+  tags: routing-rules
+
+- name: Show nxs_create_routingrules
+  ansible.builtin.debug:
+    var: nxs_create_routingrules
+  when: nexus_config_dry_run
+  changed_when: nxs_create_routingrules | length > 0
+  tags: routing-rules
+
+- name: Show nxs_update_routingrules
+  ansible.builtin.debug:
+    var: nxs_update_routingrules
+  when: nexus_config_dry_run
+  changed_when: nxs_update_routingrules | length > 0
+  tags: routing-rules
+
+- name: Show nxs_delete_routingrules
+  ansible.builtin.debug:
+    var: nxs_delete_routingrules
+  when: nexus_config_dry_run
+  changed_when: nxs_delete_routingrules | length > 0
+  tags: routing-rules
+
+- name: Apply Routing Rule changes
+  block:
+    - name: Create configured Routing Rules using Nexus API
+      ansible.builtin.include_tasks: routing-rules-api.yml
+      vars:
+        rules: "{{ item | default([]) }}"
+        method: POST
+      with_items:
+        - "{{ nexus_repos_routing_rules | default([]) }}"
+      when: nxs_create_routingrules | length > 0
+      tags: routing-rules
+
+    - name: Update configured Routing Rules using Nexus API
+      ansible.builtin.include_tasks: routing-rules-api.yml
+      vars:
+        rules: "{{ item | default([]) }}"
+        method: PUT
+      with_items:
+        - "{{ nxs_update_routingrules | default([]) }}"
+      when: nxs_update_routingrules | length > 0
+      tags: routing-rules
+
+    - name: Delete Routing Rules using Nexus API
+      ansible.builtin.include_tasks: routing-rules-api.yml
+      vars:
+        rules: "{{ item | default([]) }}"
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_routingrules | default([]) }}"
+      when: nxs_delete_routingrules | length > 0 and nexus_enforce_desired_state | bool
+      tags: routing-rules
+  when: not nexus_config_dry_run
+  tags: routing-rules

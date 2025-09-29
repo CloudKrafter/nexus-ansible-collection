@@ -1,0 +1,99 @@
+- name: Normalize local users
+  ansible.builtin.set_fact:
+    nexus_local_users_normalized: "{{ nexus_local_users | cloudkrafter.nexus.normalize_local_users }}"
+  tags: users
+
+- name: Get all Users
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/users"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    status_code: 200
+  check_mode: false # force task to run in check mode
+  register: __nxs_crnt_usrs__
+  tags: users
+
+- name: Determine users to create
+  ansible.builtin.set_fact:
+    nxs_create_users: "{{ nexus_local_users_normalized | rejectattr('userId', 'in', __nxs_crnt_usrs__.json | map(attribute='userId') | list) | list }}"
+  tags: users
+
+- name: Determine users to delete
+  ansible.builtin.set_fact:
+    nxs_delete_users: "{{ __nxs_crnt_usrs__.json | rejectattr('userId', 'in', nexus_local_users_normalized | map(attribute='userId') | list) | selectattr('source', 'equalto', 'default') | list }}"
+  tags: users
+
+- name: Compare users for changes
+  ansible.builtin.set_fact:
+    nxs_update_users: "{{ nxs_update_users + [item] }}"
+  loop: "{{ nexus_local_users_normalized | list }}"
+  # TODO: implement AND TEST readOnly attribute
+  when: >
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first) is not defined or
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first).firstName | default(omit) != item.firstName | default(omit) or
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first).lastName | default(omit) != item.lastName | default(omit) or
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first).emailAddress | default(omit) != item.emailAddress | default(omit) or
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first).source | default(omit) != item.source | default(omit) or
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first).status | default(omit) != item.status | default(omit) or
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first).roles | default([]) | sort != item.roles | default([]) | sort or
+    ( __nxs_crnt_usrs__.json | selectattr('userId', 'equalto', item.userId) | first).externalRoles | default([]) | sort != item.externalRoles | default([]) | sort
+  tags: users
+
+- name: Show nxs_create_users
+  ansible.builtin.debug:
+    var: nxs_create_users
+  when: nexus_config_dry_run
+  changed_when: nxs_create_users | length > 0
+  tags: users
+
+- name: Show nxs_update_users
+  ansible.builtin.debug:
+    var: nxs_update_users
+  when: nexus_config_dry_run
+  changed_when: nxs_update_users | length > 0
+  tags: users
+
+- name: Show nxs_delete_users
+  ansible.builtin.debug:
+    var: nxs_delete_users
+  when: nexus_config_dry_run
+  changed_when: nxs_delete_users | length > 0
+  tags: users
+
+- name: Apply User changes
+  block:
+    - name: Create configured Users using Nexus API
+      ansible.builtin.include_tasks: users-api.yml
+      vars:
+        users: "{{ item | default([]) }}"
+        method: POST
+      with_items:
+        - "{{ nxs_create_users | default([]) }}"
+      when: nxs_create_users | length > 0
+      tags: users
+
+    - name: Update configured Users using Nexus API
+      ansible.builtin.include_tasks: users-api.yml
+      vars:
+        users: "{{ item | default([]) }}"
+        method: PUT
+      with_items:
+        - "{{ nxs_update_users | default([]) }}"
+      when: nxs_update_users | length > 0
+      tags: users
+
+    - name: Delete Users using Nexus API
+      ansible.builtin.include_tasks: users-api.yml
+      vars:
+        users: "{{ item | default([]) }}"
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_users | default([]) }}"
+      when: nxs_delete_users | length > 0 and nexus_enforce_desired_state | bool
+      tags: users
+  when: not nexus_config_dry_run
+  tags: users

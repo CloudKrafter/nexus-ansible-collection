@@ -1,0 +1,22 @@
+---
+- name: "{{ method }} {{ item.name }} privilege"
+  ansible.builtin.uri:
+    url: >
+      {% if method in ['POST'] %}
+        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/privileges/{{ type }}
+      {% elif method in ['PUT'] %}
+        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/privileges/{{ type }}/{{ item.name }}
+      {% elif method in ['DELETE'] %}
+        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/privileges/{{ item.name }}
+      {% endif %}
+    method: "{{ method }}"
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: "{{ '201' if method == 'POST' else '204' }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    body: "{{ item }}"
+    body_format: json
+  changed_when: true
+  tags: privileges

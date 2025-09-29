@@ -1,0 +1,150 @@
+- name: Get all repositories
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/repositorySettings"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 200
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+  check_mode: false # force task to run in check mode
+  register: __nxs_all_repos__
+  until: __nxs_all_repos__.status == 200
+  retries: 30
+  delay: 10
+  tags:
+    - repositories
+
+- name: Include repositories-maven-tasks
+  ansible.builtin.include_tasks: repositories-maven-tasks.yml
+  when: nexus_config_maven | bool
+  tags:
+    - repositories
+    - maven
+
+- name: Include repositories-docker-tasks
+  ansible.builtin.include_tasks: repositories-docker-tasks.yml
+  when: nexus_config_docker | bool
+  tags:
+    - repositories
+    - docker
+
+- name: Include repositories-gitlfs-tasks
+  ansible.builtin.include_tasks: repositories-gitlfs-tasks.yml
+  when: nexus_config_gitlfs | bool
+  tags:
+    - repositories
+    - gitlfs
+
+- name: Include repositories-npm-tasks
+  ansible.builtin.include_tasks: repositories-npm-tasks.yml
+  when: nexus_config_npm | bool
+  tags:
+    - repositories
+    - npm
+
+- name: Include repositories-pypi-tasks
+  ansible.builtin.include_tasks: repositories-pypi-tasks.yml
+  when: nexus_config_pypi | bool
+  tags:
+    - repositories
+    - pypi
+
+- name: Include repositories-conda-tasks
+  ansible.builtin.include_tasks: repositories-conda-tasks.yml
+  when: nexus_config_conda | bool
+  tags:
+    - repositories
+    - conda
+
+- name: Include repositories-helm-tasks
+  ansible.builtin.include_tasks: repositories-helm-tasks.yml
+  when: nexus_config_helm | bool
+  tags:
+    - repositories
+    - helm
+
+- name: Include repositories-r-tasks
+  ansible.builtin.include_tasks: repositories-r-tasks.yml
+  when: nexus_config_r | bool
+  tags:
+    - repositories
+    - r
+
+- name: Include repositories-nuget-tasks
+  ansible.builtin.include_tasks: repositories-nuget-tasks.yml
+  when: nexus_config_nuget | bool
+  tags:
+    - repositories
+    - nuget
+
+- name: Include repositories-apt-tasks
+  ansible.builtin.include_tasks: repositories-apt-tasks.yml
+  when: nexus_config_apt | bool
+  tags:
+    - repositories
+    - apt
+
+- name: Include repositories-yum-tasks
+  ansible.builtin.include_tasks: repositories-yum-tasks.yml
+  when: nexus_config_yum | bool
+  tags:
+    - repositories
+    - yum
+
+- name: Include repositories-raw-tasks
+  ansible.builtin.include_tasks: repositories-raw-tasks.yml
+  when: nexus_config_raw | bool
+  tags:
+    - repositories
+    - raw
+
+- name: Include repositories-rubygems-tasks
+  ansible.builtin.include_tasks: repositories-rubygems-tasks.yml
+  when: nexus_config_rubygems | bool
+  tags:
+    - repositories
+    - rubygems
+
+- name: Include repositories-p2-tasks
+  ansible.builtin.include_tasks: repositories-p2-tasks.yml
+  when: nexus_config_p2 | bool
+  tags:
+    - repositories
+    - p2
+
+- name: Include repositories-cocoapods-tasks
+  ansible.builtin.include_tasks: repositories-cocoapods-tasks.yml
+  when: nexus_config_cocoapods | bool
+  tags:
+    - repositories
+    - cocoapods
+
+- name: Include repositories-conan-tasks
+  ansible.builtin.include_tasks: repositories-conan-tasks.yml
+  when: nexus_config_conan | bool
+  tags:
+    - repositories
+    - conan
+
+- name: Include repositories-go-tasks
+  ansible.builtin.include_tasks: repositories-go-tasks.yml
+  when: nexus_config_go | bool
+  tags:
+    - repositories
+    - go
+
+- name: Include repositories-cargo-tasks
+  ansible.builtin.include_tasks: repositories-cargo-tasks.yml
+  when: nexus_config_cargo | bool
+  tags:
+    - repositories
+    - cargo
+
+- name: Include repositories-composer-tasks
+  ansible.builtin.include_tasks: repositories-composer-tasks.yml
+  when: nexus_config_composer | bool
+  tags:
+    - repositories
+    - composer

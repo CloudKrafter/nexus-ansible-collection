@@ -1,0 +1,149 @@
+# Configuration
+baseURL: "https://nexus.cloudkrafter.org/"
+
+enableRobotsTXT: true
+enableGitInfo: true
+enableEmoji: true
+hasCJKLanguage: true
+
+# services:
+#   googleAnalytics:
+#     ID: G-MEASUREMENT_ID
+
+outputs:
+  home: [HTML]
+  page: [HTML]
+  section: [HTML, RSS]
+
+defaultContentLanguage: en
+languages:
+  en:
+    languageName: English
+    weight: 1
+    title: "Nexus Ansible Collection by CloudKrafter"
+
+module:
+  hugoVersion:
+    extended: true
+    min: "0.112.0"
+
+  workspace: hugo.work
+  imports:
+    - path: github.com/imfing/hextra
+
+markup:
+  goldmark:
+    renderer:
+      unsafe: true
+  highlight:
+    noClasses: false
+
+enableInlineShortcodes: true
+
+menu:
+  main:
+    - name: Search
+      weight: 3
+      params:
+        type: search
+    - name: GitHub
+      weight: 4
+      url: "https://github.com/CloudKrafter/nexus-ansible-collection"
+      params:
+        icon: github
+
+  sidebar:
+    - identifier: more
+      name: More
+      params:
+        type: separator
+      weight: 1
+    - name: "Changelog ↗"
+      url: "https://github.com/CloudKrafter/nexus-ansible-collection/blob/main/CHANGELOG.md"
+      weight: 2
+    - name: "GitHub ↗"
+      url: "https://github.com/CloudKrafter/nexus-ansible-collection"
+      weight: 5
+    - name: "Ansible Galaxy ↗"
+      url: "https://galaxy.ansible.com/ui/repo/published/cloudkrafter/nexus/"
+      weight: 6
+
+
+params:
+  description: Ansible collection to install, configure and manage Nexus Repository Manager.
+
+params:
+  navbar:
+    displayTitle: true
+    displayLogo: true
+    logo:
+      path: images/logo.png
+      dark: images/logo.png
+      link: /docs
+      width: 50
+    width: wide
+
+  page:
+    # full (100%), wide (90rem), normal (1280px)
+    width: normal
+
+  theme:
+    # light | dark | system
+    default: system
+    displayToggle: true
+
+  footer:
+    enable: true
+    displayCopyright: true
+    displayPoweredBy: true
+    width: normal
+
+  displayUpdatedDate: true
+  dateFormat: "January 2, 2006"
+
+  # Search
+  # flexsearch is enabled by default
+  search:
+    enable: true
+    type: flexsearch
+
+    flexsearch:
+      # index page by: content | summary | heading | title
+      index: heading
+      # full | forward | reverse | strict
+      # https://github.com/nextapps-de/flexsearch/#tokenizer-prefix-search
+      tokenize: forward
+
+  editURL:
+    enable: true
+    base: "https://github.com/CloudKrafter/nexus-ansible-collection/edit/main/docs/content"
+
+  # blog:
+  #   list:
+  #     displayTags: true
+  #     # date | lastmod | publishDate | title | weight
+  #     sortBy: date
+  #     sortOrder: desc # or "asc"
+
+  highlight:
+    copy:
+      enable: true
+      # hover | always
+      display: hover
+
+  comments:
+    enable: true
+    type: giscus
+
+    # https://giscus.app/
+    giscus:
+      repo: cloudkrafter/nexus-ansible-collection
+      repoId: R_kgDONJUBPQ
+      category: General
+      categoryId: DIC_kwDONJUBPc4ClC7D
+      mapping: pathname
+      strict: 0
+      reactionsEnabled: 1
+      emitMetadata: 0
+      inputPosition: top
+      lang: en

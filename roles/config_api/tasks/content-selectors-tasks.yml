@@ -1,0 +1,94 @@
+- name: Normalize content selectors
+  ansible.builtin.set_fact:
+    nexus_content_selectors_normalized: "{{ nexus_content_selectors | cloudkrafter.nexus.normalize_content_selectors }}"
+  tags: content-selectors
+
+- name: Get all Content Selectors
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/content-selectors"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 200
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+  check_mode: false # force task to run in check mode
+  register: __nxs_cntnt_slctrs__
+  tags: content-selectors
+
+- name: Determine content selectors to create
+  ansible.builtin.set_fact:
+    nxs_create_content_selectors: "{{ nexus_content_selectors_normalized | rejectattr('name', 'in', __nxs_cntnt_slctrs__.json | map(attribute='name')) | list }}"
+  tags: content-selectors
+
+- name: Determine content selectors to delete
+  ansible.builtin.set_fact:
+    nxs_delete_content_selectors: "{{ __nxs_cntnt_slctrs__.json | rejectattr('name', 'in', nexus_content_selectors_normalized | map(attribute='name') | list) | list }}"
+  tags: content-selectors
+
+- name: Compare content selectors for changes
+  ansible.builtin.set_fact:
+    nxs_update_content_selectors: "{{ nxs_update_content_selectors + [item] }}"
+  loop: "{{ nexus_content_selectors_normalized | list }}"
+  when: >
+    ( __nxs_cntnt_slctrs__.json | selectattr('name', 'equalto', item.name) | first) is not defined or
+    ( __nxs_cntnt_slctrs__.json | selectattr('name', 'equalto', item.name) | first).description | default(omit) != item.description | default(omit) or
+    ( __nxs_cntnt_slctrs__.json | selectattr('name', 'equalto', item.name) | first).type | default(omit) != item.type | default(omit) or
+    ( __nxs_cntnt_slctrs__.json | selectattr('name', 'equalto', item.name) | first).expression | default(omit) != item.expression | default(omit)
+  tags: content-selectors
+
+- name: Show nxs_create_content_selectors
+  ansible.builtin.debug:
+    var: nxs_create_content_selectors
+  when: nexus_config_dry_run
+  changed_when: nxs_create_content_selectors | length > 0
+  tags: content-selectors
+
+- name: Show nxs_update_content_selectors
+  ansible.builtin.debug:
+    var: nxs_update_content_selectors
+  when: nexus_config_dry_run
+  changed_when: nxs_update_content_selectors | length > 0
+  tags: content-selectors
+
+- name: Show nxs_delete_content_selectors
+  ansible.builtin.debug:
+    var: nxs_delete_content_selectors
+  when: nexus_config_dry_run
+  changed_when: nxs_delete_content_selectors | length > 0
+  tags: content-selectors
+
+- name: Apply Content Selector changes
+  block:
+    - name: Create configured Content Selectors using Nexus API
+      ansible.builtin.include_tasks: content-selectors-api.yml
+      vars:
+        selectors: "{{ item | default([]) }}"
+        method: POST
+      with_items:
+        - "{{ nxs_create_content_selectors | default([]) }}"
+      when: nxs_create_content_selectors | length > 0
+      tags: content-selectors
+
+    - name: Update configured Content Selectors using Nexus API
+      ansible.builtin.include_tasks: content-selectors-api.yml
+      vars:
+        selectors: "{{ item | default([]) }}"
+        method: PUT
+      with_items:
+        - "{{ nxs_update_content_selectors | default([]) }}"
+      when: nxs_update_content_selectors | length > 0
+      tags: content-selectors
+
+    - name: Delete Content Selectors using Nexus API
+      ansible.builtin.include_tasks: content-selectors-api.yml
+      vars:
+        selectors: "{{ item | default([]) }}"
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_content_selectors | default([]) }}"
+      when: nxs_delete_content_selectors | length > 0 and nexus_enforce_desired_state | bool
+      tags: content-selectors
+  when: not nexus_config_dry_run
+  tags: content-selectors

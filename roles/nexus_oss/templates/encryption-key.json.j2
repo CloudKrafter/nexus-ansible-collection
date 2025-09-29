@@ -1,0 +1,11 @@
+{
+  "active": "{{ nexus_active_encryption_key_id }}",
+  "keys": [
+{% for key in nexus_encryption_keys %}
+    {
+      "id": "{{ key.id }}",
+      "key": "{{ key.secret }}"
+    }{% if not loop.last %},{% endif %}
+{% endfor %}
+  ]
+}

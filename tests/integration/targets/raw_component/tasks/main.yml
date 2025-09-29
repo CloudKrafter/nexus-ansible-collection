@@ -1,0 +1,16 @@
+- name: Download Latest Nexus with specified Architecture (check mode)
+  cloudkrafter.nexus.download:
+    state: latest
+    dest: /tmp
+    arch: aarch64
+  register: download_latest_nexus
+
+- name: Upload artifact
+  cloudkrafter.nexus.raw_component:
+    src: "{{ download_latest_nexus.destination }}"
+    dest: /nexus
+    name: nexus-latest.tar.gz
+    repository: http://localhost:8081/repository/raw-hosted
+    username: admin
+    password: changeme
+    validate_certs: false

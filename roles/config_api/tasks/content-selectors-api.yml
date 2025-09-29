@@ -1,0 +1,25 @@
+---
+- name: Construct API url
+  ansible.builtin.set_fact:
+    api_url: >
+      {% if method in ['POST'] %}
+        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/content-selectors
+      {% elif method in ['PUT', 'DELETE'] %}
+        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/content-selectors/{{ item.name }}
+      {% endif %}
+  tags: content-selectors
+
+- name: "{{ method }} {{ item.name }} content selector"
+  ansible.builtin.uri:
+    url: "{{ api_url }}"
+    method: "{{ method }}"
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 204
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    body: "{{ item }}"
+    body_format: json
+  changed_when: true
+  tags: content-selectors

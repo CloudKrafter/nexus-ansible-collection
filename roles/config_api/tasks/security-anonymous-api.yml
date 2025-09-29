@@ -1,0 +1,53 @@
+---
+- name: Normalize nexus_anonymous_access configuration
+  ansible.builtin.set_fact:
+    nexus_anonymous_access_normalized: "{{ nexus_anonymous_access | cloudkrafter.nexus.normalize_anonymous_access }}"
+  tags: security-anonymous-access
+
+- name: Get status of Anonymous Access configuration
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/anonymous"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+  check_mode: false # force task to run in check mode
+  register: __nexus_anonymous_config__
+  tags: security-anonymous-access
+
+- name: Set fact for current_nexus_anonymous_config
+  ansible.builtin.set_fact:
+    current_nexus_anonymous_config: "{{ __nexus_anonymous_config__.json | dict2items | sort(attribute='key') | items2dict }}"
+  when: __nexus_anonymous_config__.status == 200
+  tags: security-anonymous-access
+
+- name: Set fact for desired_nexus_anonymous_config
+  ansible.builtin.set_fact:
+    desired_nexus_anonymous_config: "{{ nexus_anonymous_access_normalized | dict2items | sort(attribute='key') | items2dict }}"
+  tags: security-anonymous-access
+
+- name: Configure Anonymous Access
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/anonymous"
+    method: PUT
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+    body: "{{ desired_nexus_anonymous_config | to_json }}"
+    status_code: 200
+  register: __nexus_anonymous_config_update__
+  when: current_nexus_anonymous_config != desired_nexus_anonymous_config
+  # The API always returns 200, even if the configuration is not changed
+  # So we need to check if the configuration is changed to be idempotent
+  changed_when: current_nexus_anonymous_config != desired_nexus_anonymous_config
+  tags: security-anonymous-access

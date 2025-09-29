@@ -1,0 +1,51 @@
+- name: Download Latest Nexus (check mode)
+  cloudkrafter.nexus.download:
+    state: latest
+    dest: /tmp
+  check_mode: true
+
+- name: Download Latest Nexus with specified Architecture (check mode)
+  cloudkrafter.nexus.download:
+    state: latest
+    dest: /tmp
+    arch: aarch64
+  check_mode: true
+
+- name: Download Specific Nexus Version (check mode)
+  cloudkrafter.nexus.download:
+    state: present
+    version: 3.72.0-04
+    dest: /tmp
+  check_mode: true
+
+- name: Download Specific Nexus version and ARM64 Architecture (check mode)
+  cloudkrafter.nexus.download:
+    state: present
+    version: 3.78.0-14
+    dest: /tmp
+    arch: aarch64
+  check_mode: true
+
+# - name: Download Latest Nexus
+#   cloudkrafter.nexus.download:
+#     state: latest
+#     dest: /tmp
+
+# - name: Download Latest Nexus with specified Architecture
+#   cloudkrafter.nexus.download:
+#     state: latest
+#     dest: /tmp
+#     arch: aarch64
+
+# - name: Download Specific Nexus Version
+#   cloudkrafter.nexus.download:
+#     state: present
+#     version: 3.72.0-04
+#     dest: /tmp
+
+# - name: Download Specific Nexus version and ARM64 Architecture
+#   cloudkrafter.nexus.download:
+#     state: present
+#     version: 3.78.0-14
+#     dest: /tmp
+#     arch: aarch64

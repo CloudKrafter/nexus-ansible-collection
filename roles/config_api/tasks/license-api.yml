@@ -1,0 +1,65 @@
+---
+- name: Get license information
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/system/license"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    status_code: [200, 402]
+  register: __nexus_license_info__
+  tags:
+    - license
+    - always
+
+- name: Remove license
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/system/license"
+    method: DELETE
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    status_code: 204
+  when: not nexus_enable_pro_version and nexus_pro_version and nexus_enforce_desired_state | bool
+  changed_when: true
+  tags: license
+
+# Nexus API expects a license file in binary format to be uploaded
+# So we need to decode the base64 encoded license string into a file
+- name: Create license file
+  ansible.builtin.copy:
+    content: "{{ (lookup('env', 'NEXUS_LICENSE_B64') or nexus_license_b64) | b64decode }}"
+    dest: "nexus.lic"
+    mode: "0644"
+  register: __license_status__
+  when: nexus_enable_pro_version and (not nexus_pro_version) and (lookup('env', 'NEXUS_LICENSE_B64') or nexus_license_b64)
+  tags: license
+
+- name: Upload license file through API
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/system/license"
+    method: POST
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+      Content-Type: "application/octet-stream"
+    src: "nexus.lic"
+    status_code: 200
+  register: __uploaded_license__
+  when: nexus_enable_pro_version and (not nexus_pro_version) and (lookup('env', 'NEXUS_LICENSE_B64') or nexus_license_b64)
+  tags: license
+
+# After uploading the license file, we can remove it from the file system
+- name: Remove license from file system
+  ansible.builtin.file:
+    path: "nexus.lic"
+    state: absent
+  tags: license

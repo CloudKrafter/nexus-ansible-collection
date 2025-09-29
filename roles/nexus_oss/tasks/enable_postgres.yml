@@ -1,0 +1,80 @@
+---
+- name: Store Nexus properties in {{ nexus_data_dir }}/etc/nexus.properties file
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_data_dir }}/etc/nexus.properties"
+    line: "nexus.datastore.enabled={{ nexus_use_postgres | default(false) | bool or nexus_use_postgres_after_migration | default(false) }}"
+    firstmatch: true
+    insertafter: "EOF"
+    state: present
+  tags: nexus-postgres,nexus-migrate
+  when: nexus_use_postgres | default(false) | bool or nexus_use_postgres_after_migration | default(false)
+
+- name: Create {{ nexus_data_dir }}/etc/fabric directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ nexus_data_dir }}/etc/fabric"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0750"
+  tags: nexus-postgres,nexus-migrate
+
+- name: Create {{ nexus_data_dir }}/etc/fabric/nexus-store.properties file
+  ansible.builtin.file:
+    state: touch
+    dest: "{{ nexus_data_dir }}/etc/fabric/nexus-store.properties"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0640"
+  tags: nexus-postgres,nexus-migrate
+
+- name: Get primary group and its hosts
+  ansible.builtin.set_fact:
+    nexus_group: "{{ inventory_hostname | cloudkrafter.nexus.direct_parent(groups) }}"
+    nexus_group_hosts: "{{ groups[inventory_hostname | cloudkrafter.nexus.direct_parent(groups)] | default([]) | sort }}"
+  tags: nexus-postgres,nexus-migrate
+
+- name: Show nexus group and its hosts
+  ansible.builtin.debug:
+    msg: >-
+      Nexus group {{ nexus_group }} has hosts {{ nexus_group_hosts }}
+  tags: nexus-postgres,nexus-migrate
+
+- name: Set database host for Nexus instance
+  ansible.builtin.set_fact:
+    _nxrm_selected_db_: >-
+      {{
+        nexus_postgres_db_hosts[nexus_postgres_db_host_override | default(
+          (inventory_hostname | cloudkrafter.nexus.host_index_in_group(nexus_group_hosts)) % nexus_postgres_db_hosts | length
+        )]
+      }}
+  tags: nexus-postgres,nexus-migrate
+
+- name: Show bouncer assignment
+  ansible.builtin.debug:
+    msg: >-
+      Host {{ inventory_hostname }} ({{ nexus_group }})
+      will use {{ _nxrm_selected_db_.host }}
+  tags: nexus-postgres,nexus-migrate
+
+- name: Add the username and password to the nexus-store.properties file
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_data_dir }}/etc/fabric/nexus-store.properties"
+    line: "{{ item }}"
+    insertafter: "EOF"
+    state: present
+  loop:
+    - username={{ _nxrm_selected_db_.username }}
+    - password={{ _nxrm_selected_db_.password }}
+    - jdbcUrl=jdbc\:postgresql\://{{ _nxrm_selected_db_.host }}\:{{ _nxrm_selected_db_.port }}/{{ _nxrm_selected_db_.name }}
+    - maximumPoolSize={{ nexus_postgres_max_pool_size }}
+    - advanced=maxLifetime\={{ nexus_postgres_max_lifetime }}
+  tags: nexus-postgres,nexus-migrate
+
+- name: Start Nexus service
+  ansible.builtin.systemd:
+    name: nexus.service
+    state: started
+  tags: nexus-postgres,nexus-migrate
+  notify:
+    - wait-for-nexus
+    - wait-for-nexus-port

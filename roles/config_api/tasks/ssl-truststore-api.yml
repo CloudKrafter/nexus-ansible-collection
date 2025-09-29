@@ -1,0 +1,128 @@
+- name: Initialize facts with default values
+  ansible.builtin.set_fact:
+    current_nexus_ssl_config: {}
+    pem_certificates: []
+    desired_pem_certificates: []
+    missing_certificates: []
+    missing_hosts: []
+    certificates_to_import: []
+    certificates_to_remove: []
+  tags: ssl-truststore
+
+- name: Get current SSL truststore configuration
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl/truststore"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+  check_mode: false # force task to run in check mode
+  register: __nexus_ssl_config__
+  tags: ssl-truststore
+
+- name: Set fact for current_nexus_ssl_config
+  ansible.builtin.set_fact:
+    current_nexus_ssl_config: "{{ __nexus_ssl_config__.json }}"
+  when: __nexus_ssl_config__.status == 200
+  tags: ssl-truststore
+
+- name: Fetch and add certificates from hostnames
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl?host={{ item.host }}&port={{ item.port }}"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+  check_mode: false # force task to run in check mode
+  register: __nexus_fetched_ssl_certificates__
+  loop: "{{ nexus_ssl_truststore.hostnames }}"
+  when: nexus_ssl_truststore.hostnames is defined and nexus_ssl_truststore.hostnames | length > 0
+  tags: ssl-truststore
+
+- name: Extract PEM values from fetched certificates
+  ansible.builtin.set_fact:
+    pem_certificates: "{{ __nexus_fetched_ssl_certificates__.results | map(attribute='json.pem') | list }}"
+  when: __nexus_fetched_ssl_certificates__.results is defined
+  tags: ssl-truststore
+
+- name: Create a fact with all desired PEM certificates
+  ansible.builtin.set_fact:
+    desired_pem_certificates: >
+      {{ (pem_certificates | list) +
+         (nexus_ssl_truststore.certificates | default([]) | map(attribute='name') | list) }}
+  tags: ssl-truststore
+
+- name: Filter non-existing certificates
+  ansible.builtin.set_fact:
+    missing_certificates: "{{ (nexus_ssl_truststore.certificates | default([])) | rejectattr('name', 'in', current_nexus_ssl_config | map(attribute='pem') | list) | list }}"
+    missing_hosts: "{{ (__nexus_fetched_ssl_certificates__.results | default([])) | rejectattr('json.pem', 'in', current_nexus_ssl_config | map(attribute='pem') | list) | list }}"
+  when: current_nexus_ssl_config is defined
+  tags: ssl-truststore
+
+- name: Combine missing certificates and hosts
+  ansible.builtin.set_fact:
+    certificates_to_import: >
+      {{ (missing_certificates | map(attribute='name') | list) +
+         (missing_hosts | map(attribute='json.pem') | list) }}
+  when: missing_certificates is defined and missing_hosts is defined
+  tags: ssl-truststore
+
+- name: Show certificates to import
+  ansible.builtin.debug:
+    var: certificates_to_import
+  tags: ssl-truststore
+
+- name: Identify certificates to remove
+  ansible.builtin.set_fact:
+    certificates_to_remove: "{{ current_nexus_ssl_config | rejectattr('pem', 'in', desired_pem_certificates) | map(attribute='id') | list }}"
+  when: current_nexus_ssl_config is defined and desired_pem_certificates is defined
+  tags: ssl-truststore
+
+- name: Show certificates to remove
+  ansible.builtin.debug:
+    var: certificates_to_remove
+  tags: ssl-truststore
+
+- name: Import each certificate individually
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl/truststore"
+    method: POST
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    status_code: 201
+    headers:
+      Accept: "application/json"
+      Content-Type: "application/x-pem-file"
+    body: "{{ item }}"
+  loop: "{{ certificates_to_import }}"
+  when: certificates_to_import | length > 0
+  changed_when: true
+  tags: ssl-truststore
+
+- name: Remove each certificate individually
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl/truststore/{{ item }}"
+    method: DELETE
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    status_code: 204
+  loop: "{{ certificates_to_remove }}"
+  when: certificates_to_remove | length > 0 and nexus_enforce_desired_state | bool
+  changed_when: true
+  tags: ssl-truststore

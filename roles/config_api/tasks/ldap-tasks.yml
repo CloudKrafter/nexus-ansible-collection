@@ -1,0 +1,166 @@
+---
+- name: Normalize LDAP connections
+  ansible.builtin.set_fact:
+    ldap_connections_normalized: "{{ ldap_connections | cloudkrafter.nexus.normalize_ldap_connections }}"
+  tags: ldap
+
+- name: Get all LDAP configurations
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ldap"
+    method: GET
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+    status_code: 200
+  check_mode: false # force task to run in check mode
+  register: __nexus_ldap_config__
+  tags: ldap
+
+- name: Set fact for current_nexus_ldap_config
+  ansible.builtin.set_fact:
+    current_nexus_ldap_config: "{{ __nexus_ldap_config__.json }}"
+  when: __nexus_ldap_config__.status == 200
+  tags: ldap
+
+- name: Set fact for desired_nexus_ldap_config
+  ansible.builtin.set_fact:
+    desired_nexus_ldap_config: "{{ ldap_connections_normalized }}"
+  tags: ldap
+
+- name: Determine LDAP connections to be created
+  ansible.builtin.set_fact:
+    nxs_create_ldap_connetions: "{{ ldap_connections_normalized | rejectattr('name', 'in', current_nexus_ldap_config | map(attribute='name') | list) | list }}"
+  tags: ldap
+
+- name: Determine LDAP connections to be deleted
+  ansible.builtin.set_fact:
+    nxs_delete_ldap_connetions: "{{ current_nexus_ldap_config | rejectattr('name', 'in', ldap_connections_normalized | map(attribute='name') | list) | list }}"
+  tags: ldap
+
+- name: Compare LDAP config for changes if ldap_connections is not empty
+  when: current_nexus_ldap_config | length > 0
+  block:
+    - name: Compare LDAP config for changes
+      ansible.builtin.set_fact:
+        nxs_update_ldap_connections: "{{ nxs_update_ldap_connections + [item | combine({'id': (current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).id})] }}"
+      loop: "{{ ldap_connections_normalized | list }}"
+      when: >
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first) is not defined or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).protocol | upper | default(omit) != item.protocol | upper | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).host | default(omit) != item.host | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).searchBase | default(omit) != item.searchBase | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).port | default(omit) != item.port | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).groupType | default(omit) != item.groupType | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).groupObjectClass | default(omit) != item.groupObjectClass | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).groupIdAttribute | default(omit) != item.groupIdAttribute | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).groupMemberAttribute | default(omit) != item.groupMemberAttribute | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).groupMemberFormat | default(omit) != item.groupMemberFormat | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userMemberOfAttribute | default(omit) != item.userMemberOfAttribute | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).authScheme | default(omit) != item.authScheme | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).authRealm | default(omit) != item.authRealm | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).authUsername | default(omit) != item.authUsername | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).authPassword | default(omit) != item.authPassword | default(omit) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).useTrustStore | default(false) != item.useTrustStore | default(false) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).connectionTimeoutSeconds | default(omit) != item.connectionTimeoutSeconds | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).connectionRetryDelaySeconds | default(omit) != item.connectionRetryDelaySeconds | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).maxIncidentsCount | default(omit) != item.maxIncidentsCount | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userBaseDn | default(omit) != item.userBaseDn | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userLdapFilter | default(omit) != item.userLdapFilter | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userIdAttribute | default(omit) != item.userIdAttribute | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userRealNameAttribute | default(omit) != item.userRealNameAttribute | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userEmailAddressAttribute | default(omit) != item.userEmailAddressAttribute | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userPasswordAttribute | default(omit) != item.userPasswordAttribute | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userObjectClass | default(omit) != item.userObjectClass | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).ldapGroupsAsRoles | default(false) != item.ldapGroupsAsRoles | default(false) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).groupBaseDn | default(omit) != item.groupBaseDn | default(None) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).userSubtree | default(false) != item.userSubtree | default(false) or
+        ( current_nexus_ldap_config | selectattr('name', 'equalto', item.name) | first).groupSubtree | default(false) != item.groupSubtree | default(false)
+  tags: ldap
+
+- name: Show LDAP connections to be created
+  ansible.builtin.debug:
+    var: nxs_create_ldap_connetions
+  when: nexus_config_dry_run
+  changed_when: nxs_create_ldap_connetions | length > 0
+  tags: ldap
+
+- name: Show LDAP connections to be updated
+  ansible.builtin.debug:
+    var: nxs_update_ldap_connections
+  when: nexus_config_dry_run
+  changed_when: nxs_update_ldap_connections | length > 0
+  tags: ldap
+
+- name: Show LDAP connections to be deleted
+  ansible.builtin.debug:
+    var: nxs_delete_ldap_connetions
+  when: nexus_config_dry_run
+  changed_when: nxs_delete_ldap_connetions | length > 0
+  tags: ldap
+
+- name: Apply LDAP connection changes
+  block:
+    - name: Create configured LDAP connections using Nexus API
+      ansible.builtin.include_tasks: ldap-api.yml
+      vars:
+        ldap_connections: "{{ item | default([]) }}"
+        method: POST
+      with_items:
+        - "{{ nxs_create_ldap_connetions | default([]) }}"
+      when: nxs_create_ldap_connetions | length > 0
+      tags: ldap
+
+    - name: Update configured LDAP connections using Nexus API
+      ansible.builtin.include_tasks: ldap-api.yml
+      vars:
+        ldap_connections: "{{ item | default([]) }}"
+        method: PUT
+      with_items:
+        - "{{ nxs_update_ldap_connections | default([]) }}"
+      when: nxs_update_ldap_connections | length > 0
+      tags: ldap
+
+    - name: Delete unconfigured LDAP connections using Nexus API
+      ansible.builtin.include_tasks: ldap-api.yml
+      vars:
+        ldap_connections: "{{ item | default([]) }}"
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_ldap_connetions | default([]) }}"
+      when: nxs_delete_ldap_connetions | length > 0 and nexus_enforce_desired_state | bool
+      tags: ldap
+  when: not nexus_config_dry_run
+  tags: ldap
+
+- name: Show if LDAP connections order is changed
+  ansible.builtin.debug:
+    var: ldap_connections_normalized
+  when: nexus_config_dry_run
+  changed_when: ldap_connections_normalized | map(attribute='name') | list != current_nexus_ldap_config | map(attribute='name') | list
+  tags: ldap
+
+- name: Ensure LDAP connections are in desired order
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ldap/change-order"
+    method: POST
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    force_basic_auth: true
+    timeout: "{{ nexus_api_timeout }}"
+    headers:
+      Accept: "application/json"
+      Content-Type: "application/json"
+    status_code: 204
+    body: "{{ ldap_connections_normalized | map(attribute='name') | to_json }}"
+  register: __nexus_ldap_order__
+  # The API always returns 204, even if the order is not changed
+  # So we need to check if the order is changed to be idempotent
+  changed_when: >
+    ldap_connections_normalized | map(attribute='name') | list != current_nexus_ldap_config | map(attribute='name') | list
+  when: not nexus_config_dry_run and ldap_connections_normalized | length > 0
+  tags: ldap

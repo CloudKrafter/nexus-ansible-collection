@@ -1,0 +1,8 @@
+nexus_version: 3.84.0-03 #3.80.0-06 
+nexus_download_url: https://nexus.ontwikkel.local/repository/tpe-repo/nexus
+nexus_download_ssl_verify: false 
+nexus_default_role: role-team1
+nexus_log4j_supported: true
+nexus_audit_enabled: true
+nexus_rut_auth_header: '<head><meta charset="UTF-8"><title>Page Title</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>'
+nexus_branding_footer: '<head><meta charset="UTF-8"><title>Page Title</title><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>'
