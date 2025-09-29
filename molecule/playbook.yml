@@ -84,3 +84,4 @@
           Details: {{ nxrm_instance.node.details is defined }}
       ansible.builtin.debug:
         msg: "{{ info.split('\n') }}"
+ 
