@@ -30,6 +30,21 @@ nexus_blobstores:
       limit: 104857600 #100Mb
 
 nexus_roles:
+  - id: "nx-admin"
+    name: "nx-admin"
+    description: "Administrator Role"
+    privileges:
+      - "nx-all"
+    roles: []
+  - id: "nx-anonymous"
+    name: "nx-anonymous"
+    description: "Anonymous Role"
+    privileges:
+      - "nx-healthcheck-read"
+      - "nx-search-read"
+      - "nx-repository-view-*-*-read"
+      - "nx-repository-view-*-*-browse"
+    roles: []
   - id: "nx-developer"
     name: "nx-developer"
     description: "Developer Role"

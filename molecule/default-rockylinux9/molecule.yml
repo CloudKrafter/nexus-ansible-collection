@@ -46,10 +46,6 @@ provisioner:
   config_options:
     defaults:
       callbacks_enabled: timer, profile_roles, profile_tasks
-  inventory:
-    links:
-      group_vars: group_vars/
-
 
 scenario:
   check_sequence:
