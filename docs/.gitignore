@@ -1,9 +1,0 @@
-public/
-resources/
-*.bak
-*.swp
-*.swo
-.DS_Store
-.vscode/
-.idea/
-*.lock

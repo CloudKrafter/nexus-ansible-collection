@@ -1,0 +1,473 @@
+---
+- name: Check requirements and deprecated features/vars
+  ansible.builtin.import_tasks: requirements_and_deprecated.yml
+
+- name: Include OS specific variables.
+  ansible.builtin.include_vars: configure-{{ ansible_os_family }}.yml
+
+- name: Include OS specific selinux libs and utils if needed
+  ansible.builtin.include_tasks: selinux-{{ ansible_os_family }}.yml
+  when: ansible_selinux.status is defined and ansible_selinux.status == "enabled"
+
+- name: Check if SystemD service is installed
+  ansible.builtin.stat:
+    path: /etc/systemd/system/nexus.service
+  register: nexus_systemd_service_file
+
+- name: Check if sysv service is installed
+  ansible.builtin.stat:
+    path: /etc/init.d/nexus
+  register: nexus_sysv_service_file
+
+- name: Purge nexus if asked (i.e. delete all data)
+  ansible.builtin.include_tasks: nexus_purge.yml
+  when: nexus_purge | default(false) | bool
+
+- name: Digest splited blob list var
+  ansible.builtin.include_vars: blob_vars.yml
+  when: nexus_blob_split | bool
+
+- name: Run installation tasks
+  ansible.builtin.import_tasks: nexus_install.yml
+
+- name: Configure apache reverse proxy
+  ansible.builtin.include_tasks: httpd_reverse_proxy_config.yml
+  when: httpd_setup_enable | bool
+
+- name: Configure nexus http proxy
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_http_proxy
+    call_args:
+      with_http_proxy: "{{ nexus_with_http_proxy }}"
+      http_proxy_host: "{{ nexus_http_proxy_host }}"
+      http_proxy_port: "{{ nexus_http_proxy_port }}"
+      http_proxy_username: "{{ nexus_http_proxy_username }}"
+      http_proxy_password: "{{ nexus_http_proxy_password }}"
+      with_https_proxy: "{{ nexus_with_https_proxy }}"
+      https_proxy_host: "{{ nexus_https_proxy_host }}"
+      https_proxy_port: "{{ nexus_https_proxy_port }}"
+      https_proxy_username: "{{ nexus_https_proxy_username }}"
+      https_proxy_password: "{{ nexus_https_proxy_password }}"
+      proxy_exclude_hosts: "{{ nexus_proxy_exclude_hosts }}"
+      nexus_http_proxy_timeout: "{{ nexus_http_proxy_timeout }}"
+      nexus_http_proxy_retries: "{{ nexus_http_proxy_retries }}"
+  when: nexus_with_http_proxy or nexus_with_https_proxy
+
+- name: Deleting default repositories
+  ansible.builtin.include_tasks: delete_repo_each.yml
+  with_items:
+    - maven-central
+    - maven-public
+    - maven-releases
+    - maven-snapshots
+    - nuget-group
+    - nuget-hosted
+    - nuget.org-proxy
+  when: (nexus_data_dir_contents.matched == 0) and nexus_delete_default_repos
+
+- name: Deleting default blobstore
+  ansible.builtin.include_tasks: delete_blobstore_each.yml
+  with_items: >-
+    {{
+      {'default':{'blob': 'default'}}
+      | combine(nexus_blob_names)
+      | json_query("*.{name: blob}")
+      | list
+      | unique
+    }}
+  when: (nexus_data_dir_contents.matched == 0) and nexus_delete_default_blobstore
+  tags: blobstores
+
+- name: Provisioning (ldap, content selectors, blobstores, prepare privileges)
+  when: nexus_run_provisionning | default(true) | bool
+  tags:
+    - provision
+    - blobstores
+  block:
+    - name: Create/check ldap servers
+      ansible.builtin.include_tasks: setup_ldap_each.yml
+      with_items: "{{ ldap_connections }}"
+
+    - name: Create/check content selectors
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: create_content_selectors_from_list
+        call_args: "{{ nexus_content_selectors }}"
+      when: nexus_content_selectors | length > 0
+
+    - name: Apply defaults to privileges
+      # @todo: fix with easier syntax once the flip filter is released
+      # See more comments on this issue in process_repos_list.yml
+      ansible.builtin.set_fact:
+        nexus_privileges: >-
+          {%- set result = [] -%}
+          {%- for privilege in nexus_privileges -%}
+            {{ result.append(_nexus_privilege_defaults | combine(privilege)) }}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Create/Check blobstores
+      when: nexus_restore_point is undefined
+      tags: provision, blobstores
+      block:
+        - name: Get all existing blobstores
+          ansible.builtin.uri:
+            url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/blobstores"
+            user: admin
+            password: "{{ current_nexus_admin_password }}"
+            method: GET
+            force_basic_auth: true
+            validate_certs: "{{ nexus_api_validate_certs }}"
+            body_format: json
+            return_content: yes
+            status_code: 200
+          register: __nexus_existing_blobstores__
+          tags: blobstores
+
+        - name: Create directories for blob stores.
+          ansible.builtin.file:
+            path: "{{ item['path'] }}"
+            owner: "{{ nexus_os_user }}"
+            group: "{{ nexus_os_group }}"
+            state: directory
+            recurse: "{{ nexus_blobstores_recurse_owner | default(false) | bool }}"
+          when: item.path is defined
+          loop: "{{ nexus_blobstores }}"
+          loop_control:
+            label: "blobstore: {{ item.name }} - type: {{ item.type | d('file') }} - path: {{ item.path | d('None') }}"
+          tags: blobstores
+        # Note: blob type is now required!
+        - name: Create/Check blobstores using API
+          ansible.builtin.include_tasks: create_blobstores.yml
+          vars:
+            api_payload: "{{ item | default([]) }}"
+          loop:
+            - "{{ nexus_blobstores | d([]) }}"
+          when: nexus_blobstores | length > 0
+          tags: blobstores
+
+- name: Restore nexus backup
+  ansible.builtin.include_tasks: nexus-restore.yml
+  when: nexus_restore_point is defined
+
+- name: Provisionning part 2 (cleanup policies, repositories, privileges, roles, routing rules)
+  when: nexus_run_provisionning | default(true) | bool
+  tags:
+    - provision
+    - repos
+    - cleanup
+    - privileges
+    - roles
+    - users
+    - ldap
+    - routing-rules
+  block:
+    - name: Create/check cleanup policies
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: create_cleanup_policies_from_list
+        call_args: "{{ nexus_repos_cleanup_policies }}"
+      when: nexus_repos_cleanup_policies | length > 0 and not nexus_enable_pro_version | default(false) | bool
+      tags: cleanup
+
+    - name: Get all existing cleanup policies
+      ansible.builtin.uri:
+        url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/cleanup-policies"
+        user: admin
+        password: "{{ current_nexus_admin_password }}"
+        method: GET
+        force_basic_auth: true
+        validate_certs: "{{ nexus_api_validate_certs }}"
+        body_format: json
+        return_content: yes
+        status_code: 200
+      register: __nexus_existing_cleanup_policies__
+      when: nexus_enable_pro_version | default(false) | bool
+      tags: cleanup
+    
+    - name: Create configured cleanup policies using Nexus API
+      ansible.builtin.include_tasks: create_cleanup_policies.yml
+      vars:
+        api_payload: "{{ item | default([]) }}"
+      loop:
+        - "{{ nexus_repos_cleanup_policies | d([]) }}"
+      when: nexus_use_api_for_provisioning | default(false) | bool and nexus_repos_cleanup_policies | length > 0 and nexus_enable_pro_version
+      tags: cleanup
+    
+    - name: Get all existing routing rules
+      ansible.builtin.uri:
+        url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/routing-rules"
+        user: admin
+        password: "{{ current_nexus_admin_password }}"
+        method: GET
+        force_basic_auth: true
+        validate_certs: "{{ nexus_api_validate_certs }}"
+        body_format: json
+        return_content: yes
+        status_code: 200
+      register: __nexus_existing_routing_rules__
+      tags: routing-rules
+
+    - name: Create configured routing rules using Nexus API
+      ansible.builtin.include_tasks: create_routing_rules.yml
+      vars:
+        api_payload: "{{ item | default([]) }}"
+      loop:
+        - "{{ nexus_repos_routing_rules | d([]) }}"
+      tags: routing-rules
+
+    - name: Apply defaults to repositories configurations and process a single list
+      ansible.builtin.include_tasks: process_repos_list.yml
+      vars:
+        use_api: "{{ nexus_use_api_for_provisioning | default(false) | bool }}"
+      tags: repos
+
+    - name: Create configured repositories
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: create_repos_from_list
+        call_args: "{{ _nexus_repos_global_list | d([]) }}"
+      when: not nexus_use_api_for_provisioning | default(false) | bool
+      tags: repos
+
+    - name: Get all existing repositories
+      ansible.builtin.uri:
+        url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/repositories"
+        user: admin
+        password: "{{ current_nexus_admin_password }}"
+        method: GET
+        force_basic_auth: true
+        validate_certs: "{{ nexus_api_validate_certs }}"
+        body_format: json
+        return_content: yes
+        status_code: 200
+      register: __nexus_existing_repos__
+      tags: repos
+      when: nexus_use_api_for_provisioning | default(false) | bool
+
+    - name: Create configured repositories using Nexus API
+      ansible.builtin.include_tasks: create_repos.yml
+      vars:
+        api_payload: "{{ item | default([]) }}"
+      loop:
+        - "{{ _nexus_repos_maven_proxy | d([]) }}"
+        - "{{ _nexus_repos_maven_hosted | d([]) }}"
+        - "{{ _nexus_repos_maven_group | d([]) }}"
+        - "{{ _nexus_repos_docker_proxy | d([]) }}"
+        - "{{ _nexus_repos_docker_hosted | d([]) }}"
+        - "{{ _nexus_repos_docker_group | d([]) }}"
+        - "{{ _nexus_repos_pypi_proxy | d([]) }}"
+        - "{{ _nexus_repos_pypi_hosted | d([]) }}"
+        - "{{ _nexus_repos_pypi_group | d([]) }}"
+        - "{{ _nexus_repos_raw_proxy | d([]) }}"
+        - "{{ _nexus_repos_raw_hosted | d([]) }}"
+        - "{{ _nexus_repos_raw_group | d([]) }}"
+        - "{{ _nexus_repos_rubygems_proxy | d([]) }}"
+        - "{{ _nexus_repos_rubygems_hosted | d([]) }}"
+        - "{{ _nexus_repos_rubygems_group | d([]) }}"
+        - "{{ _nexus_repos_bower_proxy | d([]) }}"
+        - "{{ _nexus_repos_bower_hosted | d([]) }}"
+        - "{{ _nexus_repos_bower_group | d([]) }}"
+        - "{{ _nexus_repos_npm_hosted | d([]) }}"
+        - "{{ _nexus_repos_nuget_proxy | d([]) }}"
+        - "{{ _nexus_repos_nuget_hosted | d([]) }}"
+        - "{{ _nexus_repos_nuget_group | d([]) }}"
+        - "{{ _nexus_repos_gitlfs_hosted | d([]) }}"
+        - "{{ _nexus_repos_yum_proxy | d([]) }}"
+        - "{{ _nexus_repos_yum_hosted | d([]) }}"
+        - "{{ _nexus_repos_yum_group | d([]) }}"
+        - "{{ _nexus_repos_apt_proxy | d([]) }}"
+        - "{{ _nexus_repos_apt_hosted | d([]) }}"
+        - "{{ _nexus_repos_helm_proxy | d([]) }}"
+        - "{{ _nexus_repos_helm_hosted | d([]) }}"
+        - "{{ _nexus_repos_r_proxy | d([]) }}"
+        - "{{ _nexus_repos_r_hosted | d([]) }}"
+        - "{{ _nexus_repos_r_group | d([]) }}"
+        - "{{ _nexus_repos_p2_proxy | d([]) }}"
+        - "{{ _nexus_repos_conda_proxy | d([]) }}"
+        - "{{ _nexus_repos_go_proxy | d([]) }}"
+        - "{{ _nexus_repos_go_group | d([]) }}"
+        - "{{ _nexus_repos_conan_proxy | d([]) }}"
+        - "{{ _nexus_repos_cocoapods_proxy | d([]) }}"
+      when: nexus_use_api_for_provisioning | default(false) | bool
+      tags: repos
+    
+    # This is temporarily because BearerToken for NPM proxies can not be set using the API
+    - name: Create configured NPM Proxy repositories
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: create_repos_from_list
+        call_args: "{{ _nexus_repos_npm_proxy | d([]) }}"
+      tags: repos
+    
+    # This is temporarily because when creating NPM group repos, thers a possibility it contains NPM proxies.
+    # Therefor we only create NPM group repos after hosted and proxy repos have been created.
+    - name: Create configured NPM group repositories using Nexus API
+      ansible.builtin.include_tasks: create_repos.yml
+      vars:
+        api_payload: "{{ item | default([]) }}"
+      loop:
+        - "{{ _nexus_repos_npm_group | d([]) }}"
+      when: nexus_use_api_for_provisioning | default(false) | bool
+      tags: repos
+
+    - name: Create/check privileges
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: setup_privileges_from_list
+        call_args: "{{ nexus_privileges }}"
+      when: nexus_privileges | length > 0
+      tags: privileges
+
+    - name: Create/check roles
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: setup_roles_from_list
+        call_args: "{{ nexus_roles }}"
+      when: nexus_roles | length > 0
+      tags: roles
+
+    - name: Create/check local users
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: setup_users_from_list
+        call_args: "{{ nexus_local_users }}"
+      when: nexus_local_users | length > 0
+      tags: users
+
+    - name: Create/check ldap users
+      ansible.builtin.include_tasks: call_script.yml
+      vars:
+        script_name: setup_ldap_users_from_list
+        call_args: "{{ nexus_ldap_users }}"
+      when: nexus_ldap_users | length > 0
+      tags:
+        - users
+        - ldap
+
+- name: Configure anonymous access
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_anonymous_access
+    call_args:
+      anonymous_access: "{{ nexus_anonymous_access }}"
+
+- name: Configure base url
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_base_url
+    call_args:
+      base_url: "{{ nexus_public_scheme }}://{{ nexus_public_hostname }}/"
+
+- name: Configure realms
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_realms
+    call_args:
+      nuget_api_key_realm: "{{ nexus_nuget_api_key_realm }}"
+      npm_bearer_token_realm: "{{ nexus_npm_bearer_token_realm }}"
+      rut_auth_realm: "{{ nexus_rut_auth_realm }}"
+      ldap_realm: "{{ nexus_ldap_realm }}"
+      docker_bearer_token_realm: "{{ nexus_docker_bearer_token_realm }}"
+
+- name: Configure RUT Auth header
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_capability
+    call_args:
+      capability_typeId: rutauth
+      capability_enabled: true
+      capability_properties:
+        httpHeader: "{{ nexus_rut_auth_header }}"
+  when: nexus_rut_auth_header is defined
+
+- name: Configure mail server
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/email"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: PUT
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    body:
+      enabled: "{{ nexus_email_server_enabled }}"
+      host: "{{ nexus_email_server_host }}"
+      port: "{{ nexus_email_server_port }}"
+      username: "{{ nexus_email_server_username }}"
+      password: "{{ nexus_email_server_password }}"
+      fromAddress: "{{ nexus_email_from_address }}"
+      subjectPrefix: "{{ nexus_email_subject_prefix }}"
+      startTlsEnabled: "{{ nexus_email_tls_enabled }}"
+      startTlsRequired: "{{ nexus_email_tls_required }}"
+      sslOnConnectEnabled: "{{ nexus_email_ssl_on_connect_enabled }}"
+      sslServerIdentityCheckEnabled: "{{ nexus_email_ssl_check_server_identity_enabled }}"
+      nexusTrustStoreEnabled: "{{ nexus_email_trust_store_enabled }}"
+    status_code: 200,204
+
+- name: Configure branding capability
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_capability
+    call_args:
+      capability_typeId: rapture.branding
+      capability_enabled: "{{ (nexus_branding_footer | length > 0) and (nexus_branding_header | length > 0) }}"
+      capability_properties:
+        footerHtml: "{{ nexus_branding_footer }}"
+        headerHtml: "{{ nexus_branding_header }}"
+        footerEnabled: "{{ nexus_branding_footer | length > 0 }}"
+        headerEnabled: "{{ nexus_branding_header | length > 0 }}"
+
+- name: Configure audit capability
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_capability
+    call_args:
+      capability_typeId: audit
+      capability_enabled: "{{ nexus_audit_enabled | bool }}"
+      capability_properties: {}
+
+- name: Configure log4j-visualizer capability
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_capability
+    call_args:
+      capability_typeId: log4j-visualizer
+      capability_enabled: "{{ nexus_log4j_visualizer_enabled | bool }}"
+      capability_properties: {}
+
+- name: Configure Default Role capability
+  ansible.builtin.include_tasks: call_script.yml
+  vars:
+    script_name: setup_capability
+    call_args:
+      capability_typeId: defaultrole
+      capability_enabled: "{{ (nexus_default_role | length > 0) }}"
+      capability_properties:
+        role: "{{ nexus_default_role }}"
+
+- name: Define backup task if backup is configured
+  ansible.builtin.set_fact:
+    _nexus_backup_task:
+      - name: db and blobstores backup
+        typeId: script
+        schedule_type: "{{ nexus_backup_schedule_type }}"
+        cron: "{{ nexus_backup_cron }}"
+        start_date_time: "{{ nexus_backup_start_date_time | default('') }}"
+        weekly_days: "{{ nexus_backup_weekly_days | default([]) }}"
+        monthly_days: "{{ nexus_backup_monthly_days | default([]) }}"
+        taskProperties:
+          language: groovy
+          source: "{{ lookup('template', './templates/backup.groovy.j2') }}"
+  when: nexus_backup_configure | bool
+
+- name: Create scheduled tasks (with backup task if relevant)
+  ansible.builtin.include_tasks: create_task_each.yml
+  with_items: "{{ nexus_scheduled_tasks + _nexus_backup_task | default([]) }}"
+  when: nexus_run_provisionning | default(true) | bool
+
+- name: Migrate OrientDB to Postgres
+  ansible.builtin.include_tasks: migrate_database.yml
+  tags: nexus-migrate, nexus-healthcheck
+  when: nexus_migrate_database | default(false) | bool

@@ -1,14 +1,8 @@
 ---
 - name: Converge
-  hosts: cluster-1
-  collections:
-    - cloudkrafter.nexus
-
+  hosts: nexus
   roles:
-    - role: cloudkrafter.nexus.nexus_oss
-      tags: nx-provision
-    - role: cloudkrafter.nexus.config_api
-      tags: nx-config
+    - role: cloudkrafter-nexus-pro
   vars_files:
     - ssl-{{ ansible_os_family }}.yml
     - nexus_common_test_vars.yml

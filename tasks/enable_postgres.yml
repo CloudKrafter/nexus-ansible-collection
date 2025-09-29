@@ -1,0 +1,52 @@
+---
+- name: Store Nexus properties in {{ nexus_data_dir }}/etc/nexus.properties file
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_data_dir }}/etc/nexus.properties"
+    line: "nexus.datastore.enabled={{ nexus_use_postgres | default(false) | bool or nexus_use_postgres_after_migration | default(false) }}"
+    firstmatch: true
+    insertafter: "EOF"
+    state: present
+  tags: nexus-postgres,nexus-migrate
+  when: nexus_use_postgres | default(false) | bool or nexus_use_postgres_after_migration | default(false)
+
+- name: Create {{ nexus_data_dir }}/etc/fabric directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ nexus_data_dir }}/etc/fabric"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0750"
+  tags: nexus-postgres,nexus-migrate
+
+- name: Create {{ nexus_data_dir }}/etc/fabric/nexus-store.properties file
+  ansible.builtin.file:
+    state: touch
+    dest: "{{ nexus_data_dir }}/etc/fabric/nexus-store.properties"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0640"
+  tags: nexus-postgres,nexus-migrate
+
+# Add username and password to the nexus-store.properties file in the etc directory
+- name: Add the username and password to the nexus-store.properties file
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_data_dir }}/etc/fabric/nexus-store.properties"
+    line: "{{ item }}"
+    insertafter: "EOF"
+    state: present
+  loop:
+    - username={{ nexus_postgres_db_username }}
+    - password={{ nexus_postgres_db_password }}
+    - jdbcUrl=jdbc\:postgresql\://{{ nexus_postgres_db_host }}\:{{ nexus_postgres_db_port }}/{{ nexus_postgres_db_name }}
+    - maximumPoolSize={{ nexus_postgres_max_pool_size }}
+    - advanced=maxLifetime\={{ nexus_postgres_max_lifetime }}
+  tags: nexus-postgres,nexus-migrate
+
+- name: Start Nexus service
+  ansible.builtin.systemd:
+    name: nexus.service
+    state: started
+  tags: nexus-postgres,nexus-migrate
+  notify:
+    - wait-for-nexus
+    - wait-for-nexus-port

@@ -1,0 +1,2269 @@
+---
+# Process a single _nexus_repos_global_list for configured formats and apply default values for type.
+
+# @todo: refactor with easier syntax once the 'flip' filter is released (possibly in ansible 2.8)
+# See the following related PRs/issues.
+# - https://github.com/ansible/ansible/pull/46340
+# - https://github.com/ansible/ansible/pull/46255
+# - https://github.com/ansible/ansible/issues/46215
+# - https://github.com/pallets/jinja/pull/906
+- name: Process definitions for maven
+  when: nexus_config_maven | bool
+  block:
+    - name: Apply defaults to maven proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_maven_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_maven_proxy -%}
+            {%- set combined_repo = _nexus_repos_maven_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull_enabled | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'maven': {
+                'versionPolicy': combined_repo.version_policy | default('RELEASE') | upper,
+                'layoutPolicy': combined_repo.layout_policy | default('STRICT') | upper,
+                'contentDisposition': combined_repo.content_disposition | default('INLINE') | upper
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to maven hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_maven_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_maven_hosted -%}
+            {%- set combined_repo = _nexus_repos_maven_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              },
+              'maven': {
+                'versionPolicy': combined_repo.version_policy | default('RELEASE') | upper,
+                'layoutPolicy': combined_repo.layout_policy | default('STRICT') | upper,
+                'contentDisposition': combined_repo.content_disposition | default('INLINE') | upper
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to maven group repos
+      ansible.builtin.set_fact:
+        nexus_repos_maven_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_maven_group -%}
+            {%- set combined_repo = _nexus_repos_maven_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add maven repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_maven_proxy | map('combine', {"format": "maven2", "type": "proxy"}) | list)
+            +
+            (nexus_repos_maven_hosted | map('combine', {"format": "maven2", "type": "hosted"}) | list)
+            +
+            (nexus_repos_maven_group | map('combine', {"format": "maven2", "type": "group"}) | list)
+          }}
+        _nexus_repos_maven_proxy: >-
+          {{
+            _nexus_repos_maven_proxy | default([])
+            +
+            (nexus_repos_maven_proxy | map('combine', {"format": "maven", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_maven_hosted: >-
+          {{
+            _nexus_repos_maven_hosted | default([])
+            +
+            (nexus_repos_maven_hosted | map('combine', {"format": "maven", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_maven_group: >-
+          {{
+            _nexus_repos_maven_group | default([])
+            +
+            (nexus_repos_maven_group | map('combine', {"format": "maven", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for docker
+  when: nexus_config_docker | bool
+  block:
+    - name: Apply defaults to docker proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_docker_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_docker_proxy -%}
+            {%- set combined_repo = _nexus_repos_docker_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull_enabled | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default
+                },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'docker': {
+                'v1Enabled': combined_repo.v1_enabled | default(false),
+                'forceBasicAuth': combined_repo.force_basic_auth | default(false),
+                'httpPort': combined_repo.http_port | default(omit),
+                'httpsPort': combined_repo.https_port | default(omit),
+                'subdomain': combined_repo.sub_domain | default(omit)
+              },
+              'dockerProxy': {
+                'indexType': combined_repo.index_type | default(omit),
+                'indexUrl': combined_repo.index_url | default(omit),
+                'cacheForeignLayers': combined_repo.cache_foreign_layers | default(omit),
+                'foreignLayerUrlWhitelist': combined_repo.foreign_layer_url_whitelist | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to docker hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_docker_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_docker_hosted -%}
+            {%- set combined_repo = _nexus_repos_docker_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper,
+                'latestPolicy': combined_repo.lallow_redeploy_latest | default(omit)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              },
+              'docker': {
+                'v1Enabled': combined_repo.v1_enabled | default(false),
+                'forceBasicAuth': combined_repo.force_basic_auth | default(false),
+                'httpPort': combined_repo.http_port | default(omit),
+                'httpsPort': combined_repo.https_port | default(omit),
+                'subdomain': combined_repo.sub_domain | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to docker group repos
+      ansible.builtin.set_fact:
+        nexus_repos_docker_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_docker_group -%}
+            {%- set combined_repo = _nexus_repos_docker_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([]),
+                'writableMember': combined_repo.writable_member_repo | default(omit)
+              },
+              'docker': {
+                'v1Enabled': combined_repo.v1_enabled | default(false),
+                'forceBasicAuth': combined_repo.force_basic_auth | default(false),
+                'httpPort': combined_repo.http_port | default(omit),
+                'httpsPort': combined_repo.https_port | default(omit),
+                'subdomain': combined_repo.sub_domain | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add docker repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_docker_proxy | map('combine', {"format": "docker", "type": "proxy"}) | list)
+            +
+            (nexus_repos_docker_hosted | map('combine', {"format": "docker", "type": "hosted"}) | list)
+            +
+            (nexus_repos_docker_group | map('combine', {"format": "docker", "type": "group"}) | list)
+          }}
+        _nexus_repos_docker_proxy: >-
+          {{
+            _nexus_repos_docker_proxy | default([])
+            +
+            (nexus_repos_docker_proxy | map('combine', {"format": "docker", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_docker_hosted: >-
+          {{
+            _nexus_repos_docker_hosted | default([])
+            +
+            (nexus_repos_docker_hosted | map('combine', {"format": "docker", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_docker_group: >-
+          {{
+            _nexus_repos_docker_group | default([])
+            +
+            (nexus_repos_docker_group | map('combine', {"format": "docker", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for pypi
+  when: nexus_config_pypi | bool
+  block:
+    - name: Apply defaults to pypi proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_pypi_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_pypi_proxy -%}
+            {%- set combined_repo = _nexus_repos_pypi_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull_enabled | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'pypi': {
+                'removeQuarantined': combined_repo.remove_quarantined | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to pypi hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_pypi_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_pypi_hosted -%}
+            {%- set combined_repo = _nexus_repos_pypi_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to pypi group repos
+      ansible.builtin.set_fact:
+        nexus_repos_pypi_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_pypi_group -%}
+            {%- set combined_repo = _nexus_repos_pypi_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add pypi repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_pypi_proxy | map('combine', {"format": "pypi", "type": "proxy"}) | list)
+            +
+            (nexus_repos_pypi_hosted | map('combine', {"format": "pypi", "type": "hosted"}) | list)
+            +
+            (nexus_repos_pypi_group | map('combine', {"format": "pypi", "type": "group"}) | list)
+          }}
+        _nexus_repos_pypi_proxy: >-
+          {{
+            _nexus_repos_pypi_proxy | default([])
+            +
+            (nexus_repos_pypi_proxy | map('combine', {"format": "pypi", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_pypi_hosted: >-
+          {{
+            _nexus_repos_pypi_hosted | default([])
+            +
+            (nexus_repos_pypi_hosted | map('combine', {"format": "pypi", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_pypi_group: >-
+          {{
+            _nexus_repos_pypi_group | default([])
+            +
+            (nexus_repos_pypi_group | map('combine', {"format": "pypi", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for raw repositories
+  when: nexus_config_raw | bool
+  block:
+    - name: Apply defaults to raw proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_raw_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_raw_proxy -%}
+            {%- set combined_repo = _nexus_repos_raw_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull_enabled | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default
+                },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'raw': {
+                'contentDisposition': combined_repo.content_disposition | default('INLINE') | upper
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to raw hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_raw_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_raw_hosted -%}
+            {%- set combined_repo = _nexus_repos_raw_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              },
+              'raw': {
+                'contentDisposition': combined_repo.content_disposition | default('INLINE') | upper
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to raw group repos
+      ansible.builtin.set_fact:
+        nexus_repos_raw_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_raw_group -%}
+            {%- set combined_repo = _nexus_repos_raw_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add raw repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_raw_proxy | map('combine', {"format": "raw", "type": "proxy"}) | list)
+            +
+            (nexus_repos_raw_hosted | map('combine', {"format": "raw", "type": "hosted"}) | list)
+            +
+            (nexus_repos_raw_group | map('combine', {"format": "raw", "type": "group"}) | list)
+          }}
+        _nexus_repos_raw_proxy: >-
+          {{
+            _nexus_repos_raw_proxy | default([])
+            +
+            (nexus_repos_raw_proxy | map('combine', {"format": "raw", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_raw_hosted: >-
+          {{
+            _nexus_repos_raw_hosted | default([])
+            +
+            (nexus_repos_raw_hosted | map('combine', {"format": "raw", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_raw_group: >-
+          {{
+            _nexus_repos_raw_group | default([])
+            +
+            (nexus_repos_raw_group | map('combine', {"format": "raw", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for rubygems repositories
+  when: nexus_config_rubygems | bool
+  block:
+    - name: Apply defaults to rubygems proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_rubygems_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_rubygems_proxy -%}
+            {%- set combined_repo = _nexus_repos_rubygems_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to rubygems hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_rubygems_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_rubygems_hosted -%}
+            {%- set combined_repo = _nexus_repos_rubygems_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to rubygems group repos
+      ansible.builtin.set_fact:
+        nexus_repos_rubygems_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_rubygems_group -%}
+            {%- set combined_repo = _nexus_repos_rubygems_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add rubygems repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_rubygems_proxy | map('combine', {"format": "rubygems", "type": "proxy"}) | list)
+            +
+            (nexus_repos_rubygems_hosted | map('combine', {"format": "rubygems", "type": "hosted"}) | list)
+            +
+            (nexus_repos_rubygems_group | map('combine', {"format": "rubygems", "type": "group"}) | list)
+          }}
+        _nexus_repos_rubygems_proxy: >-
+          {{
+            _nexus_repos_rubygems_proxy | default([])
+            +
+            (nexus_repos_rubygems_proxy | map('combine', {"format": "rubygems", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_rubygems_hosted: >-
+          {{
+            _nexus_repos_rubygems_hosted | default([])
+            +
+            (nexus_repos_rubygems_hosted | map('combine', {"format": "rubygems", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_rubygems_group: >-
+          {{
+            _nexus_repos_rubygems_group | default([])
+            +
+            (nexus_repos_rubygems_group | map('combine', {"format": "rubygems", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for bower repositories
+  when: nexus_config_bower | bool
+  block:
+    - name: Apply defaults to bower proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_bower_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_bower_proxy -%}
+            {%- set combined_repo = _nexus_repos_bower_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull_enabled | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'bower': {
+                'rewritePackageUrls': combined_repo.rewrite_package_urls | default(true)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to bower hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_bower_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_bower_hosted -%}
+            {%- set combined_repo = _nexus_repos_bower_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to bower group repos
+      ansible.builtin.set_fact:
+        nexus_repos_bower_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_bower_group -%}
+            {%- set combined_repo = _nexus_repos_bower_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add bower repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_bower_proxy | map('combine', {"format": "bower", "type": "proxy"}) | list)
+            +
+            (nexus_repos_bower_hosted | map('combine', {"format": "bower", "type": "hosted"}) | list)
+            +
+            (nexus_repos_bower_group | map('combine', {"format": "bower", "type": "group"}) | list)
+          }}
+        _nexus_repos_bower_proxy: >-
+          {{
+            _nexus_repos_bower_proxy | default([])
+            +
+            (nexus_repos_bower_proxy | map('combine', {"format": "bower", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_bower_hosted: >-
+          {{
+            _nexus_repos_bower_hosted | default([])
+            +
+            (nexus_repos_bower_hosted | map('combine', {"format": "bower", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_bower_group: >-
+          {{
+            _nexus_repos_bower_group | default([])
+            +
+            (nexus_repos_bower_group | map('combine', {"format": "bower", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for npm repositories
+  when: nexus_config_npm | bool
+  block:
+    - name: Apply defaults to npm proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_npm_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_npm_proxy -%}
+            {%- set combined_repo = _nexus_repos_npm_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull_enabled |  default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'npm': {
+                'removeQuarantined': combined_repo.removeQuarantined | default(omit)
+              }
+            } -%}
+            {{ result.append(combined_repo) }}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to npm hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_npm_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_npm_hosted -%}
+            {%- set combined_repo = _nexus_repos_npm_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to npm group repos
+      ansible.builtin.set_fact:
+        nexus_repos_npm_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_npm_group -%}
+            {%- set combined_repo = _nexus_repos_npm_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              },
+              'writableMember': combined_repo.writable_member_repo | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add npm repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_npm_proxy | map('combine', {"format": "npm", "type": "proxy"}) | list)
+            +
+            (nexus_repos_npm_hosted | map('combine', {"format": "npm", "type": "hosted"}) | list)
+            +
+            (nexus_repos_npm_group | map('combine', {"format": "npm", "type": "group"}) | list)
+          }}
+        _nexus_repos_npm_proxy: >-
+          {{
+            _nexus_repos_npm_proxy | default([])
+            +
+            (nexus_repos_npm_proxy | map('combine', {"format": "npm", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_npm_hosted: >-
+          {{
+            _nexus_repos_npm_hosted | default([])
+            +
+            (nexus_repos_npm_hosted | map('combine', {"format": "npm", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_npm_group: >-
+          {{
+            _nexus_repos_npm_group | default([])
+            +
+            (nexus_repos_npm_group | map('combine', {"format": "npm", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for nuget repositories
+  when: nexus_config_nuget | bool
+  block:
+    - name: Apply defaults to nuget proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_nuget_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_nuget_proxy -%}
+            {%- set combined_repo = _nexus_repos_nuget_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'nugetProxy': {
+                'queryCacheItemMaxAge': combined_repo.query_cache_item_max_age | default(3600),
+                'nugetVersion': combined_repo.nuget_version | default('V3')
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to nuget hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_nuget_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_nuget_hosted -%}
+            {%- set combined_repo = _nexus_repos_nuget_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to nuget group repos
+      ansible.builtin.set_fact:
+        nexus_repos_nuget_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_nuget_group -%}
+            {%- set combined_repo = _nexus_repos_nuget_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add nuget repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_nuget_proxy | map('combine', {"format": "nuget", "type": "proxy"}) | list)
+            +
+            (nexus_repos_nuget_hosted | map('combine', {"format": "nuget", "type": "hosted"}) | list)
+            +
+            (nexus_repos_nuget_group | map('combine', {"format": "nuget", "type": "group"}) | list)
+          }}
+        _nexus_repos_nuget_proxy: >-
+          {{
+            _nexus_repos_nuget_proxy | default([])
+            +
+            (nexus_repos_nuget_proxy | map('combine', {"format": "nuget", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_nuget_hosted: >-
+          {{
+            _nexus_repos_nuget_hosted | default([])
+            +
+            (nexus_repos_nuget_hosted | map('combine', {"format": "nuget", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_nuget_group: >-
+          {{
+            _nexus_repos_nuget_group | default([])
+            +
+            (nexus_repos_nuget_group | map('combine', {"format": "nuget", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for gitlfs repositories
+  when: nexus_config_gitlfs | bool
+  block:
+    - name: Apply defaults to gitlfs hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_gitlfs_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_gitlfs_hosted -%}
+            {%- set combined_repo = _nexus_repos_gitlfs_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add gitlfs repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_gitlfs_hosted | map('combine', {"format": "gitlfs", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_gitlfs_hosted: >-
+          {{
+            _nexus_repos_gitlfs_hosted | default([])
+            +
+            (nexus_repos_gitlfs_hosted | map('combine', {"format": "gitlfs", "type": "hosted"}) | list)
+          }}
+
+- name: Process definitions for yum repositories
+  when: nexus_config_yum | bool
+  block:
+    - name: Apply defaults to yum proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_yum_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_yum_proxy -%}
+            {%- set combined_repo = _nexus_repos_yum_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'yumSigning': {
+                'keypair': combined_repo.yum_signing_keypair | default(omit),
+                'passphrase': combined_repo.yum_signing_passphrase | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to yum hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_yum_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_yum_hosted -%}
+            {%- set combined_repo = _nexus_repos_yum_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              },
+              'yum': {
+                'repodataDepth': combined_repo.repodata_depth | default(omit),
+                'deployPolicy': combined_repo.layout_policy | default('STRICT') | upper
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to yum group repos
+      ansible.builtin.set_fact:
+        nexus_repos_yum_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_yum_group -%}
+            {%- set combined_repo = _nexus_repos_yum_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              },
+              'yumSigning': {
+                'keypair': combined_repo.yum_signing_keypair | default(omit),
+                'passphrase': combined_repo.yum_signing_passphrase | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add yum repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_yum_proxy | map('combine', {"format": "yum", "type": "proxy"}) | list)
+            +
+            (nexus_repos_yum_hosted | map('combine', {"format": "yum", "type": "hosted"}) | list)
+            +
+            (nexus_repos_yum_group | map('combine', {"format": "yum", "type": "group"}) | list)
+          }}
+        _nexus_repos_yum_proxy: >-
+          {{
+            _nexus_repos_yum_proxy | default([])
+            +
+            (nexus_repos_yum_proxy | map('combine', {"format": "yum", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_yum_hosted: >-
+          {{
+            _nexus_repos_yum_hosted | default([])
+            +
+            (nexus_repos_yum_hosted | map('combine', {"format": "yum", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_yum_group: >-
+          {{
+            _nexus_repos_yum_group | default([])
+            +
+            (nexus_repos_yum_group | map('combine', {"format": "yum", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for apt repositories
+  when: nexus_config_apt | bool
+  block:
+    - name: Apply defaults to apt proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_apt_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_apt_proxy -%}
+            {%- set combined_repo = _nexus_repos_apt_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit),
+              'apt': {
+                'distribution': combined_repo.distribution | default(omit),
+                'flat': combined_repo.flat | default(false)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to apt hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_apt_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_apt_hosted -%}
+            {%- set combined_repo = _nexus_repos_apt_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              },
+              'apt': {
+                'distribution': combined_repo.distribution | default(omit)
+              },
+              'aptSigning': {
+                'keypair': combined_repo.keypair | default(omit),
+                'passphrase': combined_repo.passphrase | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add apt repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_apt_proxy | map('combine', {"format": "apt", "type": "proxy"}) | list)
+            +
+            (nexus_repos_apt_hosted | map('combine', {"format": "apt", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_apt_proxy: >-
+          {{
+            _nexus_repos_apt_proxy | default([])
+            +
+            (nexus_repos_apt_proxy | map('combine', {"format": "apt", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_apt_hosted: >-
+          {{
+            _nexus_repos_apt_hosted | default([])
+            +
+            (nexus_repos_apt_hosted | map('combine', {"format": "apt", "type": "hosted"}) | list)
+          }}
+
+- name: Process definitions for helm repositories
+  when: nexus_config_helm | bool
+  block:
+    - name: Apply defaults to helm proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_helm_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_helm_proxy -%}
+            {%- set combined_repo = _nexus_repos_helm_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to helm hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_helm_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_helm_hosted -%}
+            {%- set combined_repo = _nexus_repos_helm_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add helm repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_helm_proxy | map('combine', {"format": "helm", "type": "proxy"}) | list)
+            +
+            (nexus_repos_helm_hosted | map('combine', {"format": "helm", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_helm_proxy: >-
+          {{
+            _nexus_repos_helm_proxy | default([])
+            +
+            (nexus_repos_helm_proxy | map('combine', {"format": "helm", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_helm_hosted: >-
+          {{
+            _nexus_repos_helm_hosted | default([])
+            +
+            (nexus_repos_helm_hosted | map('combine', {"format": "helm", "type": "hosted"}) | list)
+          }}
+
+- name: Process definitions for r
+  when: nexus_config_r | bool
+  block:
+    - name: Apply defaults to r proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_r_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_r_proxy -%}
+            {%- set combined_repo = _nexus_repos_r_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to r hosted repos
+      ansible.builtin.set_fact:
+        nexus_repos_r_hosted: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_r_hosted -%}
+            {%- set combined_repo = _nexus_repos_r_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true),
+                'writePolicy': combined_repo.write_policy | default('ALLOW_ONCE') | upper
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'component': {
+                'proprietaryComponents': combined_repo.proprietary_components | default(omit)
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to r group repos
+      ansible.builtin.set_fact:
+        nexus_repos_r_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_r_group -%}
+            {%- set combined_repo = _nexus_repos_r_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add r repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_r_proxy | map('combine', {"format": "r", "type": "proxy"}) | list)
+            +
+            (nexus_repos_r_hosted | map('combine', {"format": "r", "type": "hosted"}) | list)
+            +
+            (nexus_repos_r_group | map('combine', {"format": "r", "type": "group"}) | list)
+          }}
+        _nexus_repos_r_proxy: >-
+          {{
+            _nexus_repos_r_proxy | default([])
+            +
+            (nexus_repos_r_proxy | map('combine', {"format": "r", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_r_hosted: >-
+          {{
+            _nexus_repos_r_hosted | default([])
+            +
+            (nexus_repos_r_hosted | map('combine', {"format": "r", "type": "hosted"}) | list)
+          }}
+        _nexus_repos_r_group: >-
+          {{
+            _nexus_repos_r_group | default([])
+            +
+            (nexus_repos_r_group | map('combine', {"format": "r", "type": "group"}) | list)
+          }}
+
+- name: Process definitions for p2 repositories
+  when: nexus_config_p2 | bool
+  block:
+    - name: Apply defaults to p2 proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_p2_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_p2_proxy -%}
+            {%- set combined_repo = _nexus_repos_p2_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add p2 repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_p2_proxy | map('combine', {"format": "p2", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_p2_proxy: >-
+          {{
+            _nexus_repos_p2_proxy | default([])
+            +
+            (nexus_repos_p2_proxy | map('combine', {"format": "p2", "type": "proxy"}) | list)
+          }}
+
+- name: Process definitions for conda
+  when: nexus_config_conda | bool
+  block:
+    - name: Apply defaults to conda proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_conda_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_conda_proxy -%}
+            {%- set combined_repo = _nexus_repos_conda_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add conda repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_conda_proxy | map('combine', {"format": "conda", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_conda_proxy: >-
+          {{
+            _nexus_repos_conda_proxy | default([])
+            +
+            (nexus_repos_conda_proxy | map('combine', {"format": "conda", "type": "proxy"}) | list)
+          }}
+
+- name: Process definitions for cocoapods repositories
+  when: nexus_config_cocoapods | bool
+  block:
+    - name: Apply defaults to cocoapods proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_cocoapods_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_cocoapods_proxy -%}
+            {%- set combined_repo = _nexus_repos_cocoapods_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add cocoapods repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_cocoapods_proxy | map('combine', {"format": "cocoapods", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_cocoapods_proxy: >-
+          {{
+            _nexus_repos_cocoapods_proxy | default([])
+            +
+            (nexus_repos_cocoapods_proxy | map('combine', {"format": "cocoapods", "type": "proxy"}) | list)
+          }}
+
+- name: Process definitions for conan repositories
+  when: nexus_config_conan | bool
+  block:
+    - name: Apply defaults to conan proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_conan_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_conan_proxy -%}
+            {%- set combined_repo = _nexus_repos_conan_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add conan repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_conan_proxy | map('combine', {"format": "conan", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_conan_proxy: >-
+          {{
+            _nexus_repos_conan_proxy | default([])
+            +
+            (nexus_repos_conan_proxy | map('combine', {"format": "conan", "type": "proxy"}) | list)
+          }}
+
+- name: Process definitions for go repositories
+  when: nexus_config_go | bool
+  block:
+    - name: Apply defaults to go proxy repos
+      ansible.builtin.set_fact:
+        nexus_repos_go_proxy: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_go_proxy -%}
+            {%- set combined_repo = _nexus_repos_go_defaults | combine(repo) -%}
+            {%- set authentication = {
+                'type': combined_repo.remote_auth_type | default('username'),
+                'username': combined_repo.remote_username | default('username'),
+                'password': combined_repo.remote_password | default('password'),
+                'ntlmHost': combined_repo.ntlm_host | default(omit),
+                'ntlmDomain': combined_repo.ntlm_domain | default(omit),
+                'preemptive': combined_repo.preemptive | default(omit)
+            } if combined_repo.remote_auth_type is defined or combined_repo.remote_username is defined else omit -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'cleanup': {
+                'policyNames': combined_repo.cleanup_policies | default([])
+              },
+              'proxy': {
+                'remoteUrl': combined_repo.remote_url | default(omit),
+                'contentMaxAge': combined_repo.maximum_component_age | default(1440),
+                'metadataMaxAge': combined_repo.maximum_metadata_age | default(1440)
+              },
+              'negativeCache': {
+                'enabled': combined_repo.negative_cache_enabled | default(true),
+                'timeToLive': combined_repo.negative_cache_ttl | default(1440)
+              },
+              'httpClient': {
+                'blocked': combined_repo.blocked | default(false),
+                'autoBlock': combined_repo.auto_block | default(true),
+                'connection': {
+                  'retries': combined_repo.connection_retries | default(omit),
+                  'useTrustStore': combined_repo.use_trust_store | default(omit),
+                  'userAgentSuffix': combined_repo.user_agent_suffix | default(omit),
+                  'timeout': combined_repo.connection_timeout | default(omit),
+                  'enableCircularRedirects': combined_repo.enable_circular_redirects | default(omit),
+                  'enableCookies': combined_repo.enable_cookies | default(omit)
+                },
+                'authentication': authentication | default(omit)
+              },
+              'replication': {
+                'preemptivePullEnabled': combined_repo.replication_preemptive_pull | default(omit),
+                'assetPathRegex': combined_repo.replication_asset_path_regex | default(omit)
+              },
+              'routingRule': combined_repo.routing_rule | default(omit)
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Apply defaults to go group repos
+      ansible.builtin.set_fact:
+        nexus_repos_go_group: >-
+          {%- set result = [] -%}
+          {%- for repo in nexus_repos_go_group -%}
+            {%- set combined_repo = _nexus_repos_go_defaults | combine(repo) -%}
+            {%- set transformed_repo = {
+              'name': combined_repo.name,
+              'online': combined_repo.online | default(true),
+              'storage': {
+                'blobStoreName': combined_repo.blob_store | default('default'),
+                'strictContentTypeValidation': combined_repo.strict_content_validation | default(true)
+              },
+              'group': {
+                'memberNames': combined_repo.member_repos | default([])
+              }
+            } -%}
+            {%- if use_api -%}
+              {{ result.append(transformed_repo) }}
+            {%- else -%}
+              {{ result.append(combined_repo) }}
+            {%- endif -%}
+          {%- endfor -%}
+          {{ result | to_json | from_json }}
+
+    - name: Add go repositories to global repos list
+      ansible.builtin.set_fact:
+        _nexus_repos_global_list: >-
+          {{
+            _nexus_repos_global_list | default([])
+            +
+            (nexus_repos_go_proxy | map('combine', {"format": "go", "type": "proxy"}) | list)
+            +
+            (nexus_repos_go_group | map('combine', {"format": "go", "type": "group"}) | list)
+          }}
+        _nexus_repos_go_proxy: >-
+          {{
+            _nexus_repos_go_proxy | default([])
+            +
+            (nexus_repos_go_proxy | map('combine', {"format": "go", "type": "proxy"}) | list)
+          }}
+        _nexus_repos_go_group: >-
+          {{
+            _nexus_repos_go_group | default([])
+            +
+            (nexus_repos_go_group | map('combine', {"format": "go", "type": "group"}) | list)
+          }}

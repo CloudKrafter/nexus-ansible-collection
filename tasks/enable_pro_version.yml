@@ -1,0 +1,74 @@
+---
+- name: check if {{ nexus_data_dir }}/etc/nexus.properties file is present
+  ansible.builtin.stat:
+    path: "{{ nexus_data_dir }}/etc/nexus.properties"
+  register: nexus_properties_file
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+
+- name: Create {{ nexus_data_dir }}/etc directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ nexus_data_dir }}/etc"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0750"
+  when: nexus_properties_file.stat.exists == false
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+
+- name: Create {{ nexus_data_dir }}/etc/nexus.properties file
+  ansible.builtin.file:
+    state: touch
+    dest: "{{ nexus_data_dir }}/etc/nexus.properties"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0640"
+  when: nexus_properties_file.stat.exists == false
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+
+# TODO: check if the environment variable NEXUS_LICENSE_B64 is set otherwise use the ansible variable NEXUS_LICENSE
+
+- name: Set the license file content
+  ansible.builtin.shell: |
+    echo $NEXUS_LICENSE_B64 | tr -d ' ' > "{{ nexus_data_dir }}/etc/license.b64"
+  environment:
+    NEXUS_LICENSE_B64: "{{ lookup('env', 'NEXUS_LICENSE_B64') }}"
+  when: lookup('env', 'NEXUS_LICENSE_B64')
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+
+# base64 decode the license file
+- name: Decode the license file
+  ansible.builtin.shell: |
+    base64 -d "{{ nexus_data_dir }}/etc/license.b64" > "{{ nexus_data_dir }}/etc/license.lic"
+  when: lookup('env', 'NEXUS_LICENSE_B64')
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+
+# copy license file from files directory to the remote host
+- name: Copy the license file to the remote host
+  ansible.builtin.copy:
+    src: "license.lic"
+    dest: "{{ nexus_data_dir }}/etc/license.lic"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0640"
+  when: lookup('env', 'NEXUS_LICENSE_B64') is not defined
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+
+# set file permissions for "{{ nexus_data_dir }}/etc/license.lic"
+- name: Set the license file permissions
+  ansible.builtin.file:
+    path: "{{ nexus_data_dir }}/etc/license.lic"
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0640"
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+
+- name: Store license in {{ nexus_data_dir }}/etc/nexus.properties file
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_data_dir }}/etc/nexus.properties"
+    line: "nexus.licenseFile={{ nexus_data_dir }}/etc/license.lic"
+    firstmatch: true
+    insertafter: "EOF"
+    state: present
+  tags: nexus-postgres,nexus-migrate,nexus-pro
+  notify:
+    - nexus-service-restart

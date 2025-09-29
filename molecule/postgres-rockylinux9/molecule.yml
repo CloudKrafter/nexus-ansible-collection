@@ -4,13 +4,13 @@ dependency:
   enabled: false
 
 driver:
-  name: docker
+  name: podman
   safe_files:
     - nexus-downloads
 
 platforms:
-  - name: cluster-1
-    hostname: cluster-1
+  - name: nexus3-pro-rockylinux9
+    hostname: nexus3-pro-rockylinux9
     image: brianveltman/molecule_openjdk17:rockylinux9
     pull: true
     pre_build_image: true
@@ -20,7 +20,7 @@ platforms:
     override_command: false
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
-      - nexus-downloads:/nexus-downloads
+      - ${MOLECULE_PROJECT_DIRECTORY}/molecule/.nexus-downloads:/nexus-downloads
     cgroupns_mode: host
     groups:
       - nexus
@@ -58,9 +58,6 @@ platforms:
 
 provisioner:
   name: ansible
-  config_options:
-    defaults:
-      callbacks_enabled: timer, profile_roles, profile_tasks
 
 scenario:
   check_sequence:

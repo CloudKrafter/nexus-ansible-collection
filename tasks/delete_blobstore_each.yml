@@ -1,0 +1,20 @@
+---
+# This script accepts a list of blobstores to delete
+# The blobstores are deleted one by one
+
+- name: Delete blobstores using API
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/blobstores/{{ blobstore.name }}"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: POST
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    body: "{{ blobstore }}"
+    status_code: 204
+    timeout: "{{ nexus_api_timeout | int }}"
+  loop: "{{ item | list }}"
+  loop_control:
+    loop_var: blobstore
+  when: __nexus_existing_blobstores__ and blobstore.name in __nexus_existing_blobstores__.json | map(attribute='name') | list
