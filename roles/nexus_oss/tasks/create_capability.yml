@@ -17,7 +17,6 @@
     timeout: "{{ nexus_api_timeout | int }}"
   when: "api_payload.type not in __nexus_existing_capabilities__.json | map(attribute='type') | list"
 
-
 - name: Get capability id
   set_fact:
     capability_id: >-
@@ -27,12 +26,10 @@
           | first) | default(None) }}
   when: api_payload.type in (__nexus_existing_capabilities__.json | map(attribute='type') | list)
 
-
 - name: Append id to API payload
   set_fact:
     api_payload_update: "{{ api_payload | combine({'id': capability_id}) }}"
   when: api_payload.type in (__nexus_existing_capabilities__.json | map(attribute='type') | list)
-
 
 - name: Update capability when capability exists
   ansible.builtin.uri:
