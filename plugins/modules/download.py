@@ -200,6 +200,14 @@ def validate_download_url(url, validate_certs=True):
         tuple: (bool, int) - (is_valid, status_code)
     """
     try:
+        # Sonatype is being anoying and blocking non-browser user agents
+        headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/115.0.0.0 Safari/537.36",
+        "Accept": "*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        }
         response = open_url(
             url,
             method='HEAD',
