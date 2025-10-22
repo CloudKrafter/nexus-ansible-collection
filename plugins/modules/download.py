@@ -212,7 +212,8 @@ def validate_download_url(url, validate_certs=True):
             url,
             method='HEAD',
             validate_certs=validate_certs,
-            follow_redirects=True
+            follow_redirects=True,
+            headers=headers
         )
         return True, response.code
     except Exception:
