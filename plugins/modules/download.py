@@ -204,7 +204,10 @@ def validate_download_url(url, validate_certs=True):
             url,
             method='HEAD',
             validate_certs=validate_certs,
-            follow_redirects=True
+            follow_redirects=True,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
+            }
         )
         return True, response.code
     except Exception:
