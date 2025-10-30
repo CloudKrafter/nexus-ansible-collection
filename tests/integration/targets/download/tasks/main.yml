@@ -25,7 +25,6 @@
     dest: /tmp
     arch: aarch64
   check_mode: true
-
 # - name: Download Latest Nexus
 #   cloudkrafter.nexus.download:
 #     state: latest
