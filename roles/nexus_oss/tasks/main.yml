@@ -397,7 +397,9 @@
   register: __nexus_existing_capabilities__
 
 - name: Configure RUT Auth header
-  ansible.builtin.include_tasks: create_capability.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
     api_payload:
       type: rutauth
@@ -431,7 +433,9 @@
     status_code: 200,204
 
 - name: Configure branding capability
-  ansible.builtin.include_tasks: create_capability.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
     api_payload:
       type: rapture.branding
@@ -443,7 +447,9 @@
         headerEnabled: "{{ nexus_branding_header | length > 0 }}"
 
 - name: Configure audit capability
-  ansible.builtin.include_tasks: create_capability.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
     api_payload:
       type: audit
@@ -451,7 +457,9 @@
       properties: {}
 
 - name: Configure log4j-visualizer capability
-  ansible.builtin.include_tasks: create_capability.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
     api_payload:
       type: log4j-visualizer
@@ -460,7 +468,9 @@
   when: nexus_log4j_supported
 
 - name: Configure Default Role capability
-  ansible.builtin.include_tasks: create_capability.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.ymll
   vars:
     api_payload:
       type: defaultrole
