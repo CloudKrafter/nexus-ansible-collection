@@ -61,6 +61,7 @@ nexus_max_direct_memory: "{{ nexus_min_heap_size }}"
 # (aka -Xms -Xmx and -XX:MaxDirectMemorySize=)
 nexus_custom_jvm_settings: []
 # Nexus Backup
+nexus_backup_db_task_id: db.backup # Set to h2.backup.task for h2 databases
 nexus_backup_dir: /var/nexus-backup
 nexus_backup_dir_create: true # Shall we create the dir, or do you already have something in place?
 nexus_restore_log: "{{ nexus_backup_dir }}/nexus-restore.log"

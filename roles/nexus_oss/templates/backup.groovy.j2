@@ -71,7 +71,7 @@ try {
 
     log.info("Create a temporary task to backup nexus db in {}/db", CurrentBackupDirPath)
     TaskScheduler taskScheduler = container.lookup(TaskScheduler.class.getName())
-    TaskConfiguration tempBackupTaskConfiguration = taskScheduler.createTaskConfigurationInstance('db.backup')
+    TaskConfiguration tempBackupTaskConfiguration = taskScheduler.createTaskConfigurationInstance("{{ nexus_backup_db_task_id }}")
     tempBackupTaskConfiguration.setName('Temporary db.backup task')
     tempBackupTaskConfiguration.setString('location', CurrentBackupDirPath+'/db')
     Schedule schedule = taskScheduler.scheduleFactory.manual()
