@@ -3,9 +3,9 @@
   ansible.builtin.set_fact:
     api_url: >
       {% if method in ['POST'] %}
-        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ldap
+        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/security/ldap
       {% elif method in ['PUT', 'DELETE'] %}
-        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ldap/{{ item.name | urlencode }}
+        {{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/security/ldap/{{ item.name | urlencode }}
       {% endif %}
   tags: ldap
 

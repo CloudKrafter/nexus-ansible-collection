@@ -11,7 +11,7 @@
 
 - name: Get current SSL truststore configuration
   ansible.builtin.uri:
-    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl/truststore"
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/security/ssl/truststore"
     method: GET
     validate_certs: "{{ nexus_api_validate_certs }}"
     user: "{{ nexus_admin_username }}"
@@ -33,7 +33,7 @@
 
 - name: Fetch and add certificates from hostnames
   ansible.builtin.uri:
-    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl?host={{ item.host }}&port={{ item.port }}"
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/security/ssl?host={{ item.host }}&port={{ item.port }}"
     method: GET
     validate_certs: "{{ nexus_api_validate_certs }}"
     user: "{{ nexus_admin_username }}"
@@ -95,7 +95,7 @@
 
 - name: Import each certificate individually
   ansible.builtin.uri:
-    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl/truststore"
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/security/ssl/truststore"
     method: POST
     validate_certs: "{{ nexus_api_validate_certs }}"
     user: "{{ nexus_admin_username }}"
@@ -114,7 +114,7 @@
 
 - name: Remove each certificate individually
   ansible.builtin.uri:
-    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}/service/rest/v1/security/ssl/truststore/{{ item }}"
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/security/ssl/truststore/{{ item }}"
     method: DELETE
     validate_certs: "{{ nexus_api_validate_certs }}"
     user: "{{ nexus_admin_username }}"
