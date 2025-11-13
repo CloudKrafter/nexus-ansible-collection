@@ -82,6 +82,8 @@
     - name: Create/check ldap servers
       ansible.builtin.include_tasks: setup_ldap_each.yml
       with_items: "{{ ldap_connections }}"
+      loop_control:
+        label: '{{ item.ldap_name }}'
 
     - name: Create/check content selectors
       ansible.builtin.include_tasks: call_script.yml
