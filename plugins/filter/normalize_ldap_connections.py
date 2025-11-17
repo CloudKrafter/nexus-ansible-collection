@@ -52,10 +52,10 @@ def normalize_ldap_connections(connections):
                     "groupMemberAttribute": conn.get("ldap_group_member_attribute", ""),
                     "groupMemberFormat": conn.get("ldap_group_member_format", ""),
                 })
-            elif "userMemberOfAttribute" in conn:
+            elif "ldap_user_memberof_attribute" in conn:
                 normalized.update({
                     "groupType": "DYNAMIC",
-                    "userMemberOfAttribute": conn.get("userMemberOfAttribute", "memberOf"),
+                    "userMemberOfAttribute": conn.get("ldap_user_memberof_attribute", "memberOf"),
                 })
 
         # API format: Keep as-is but clean empty attributes
