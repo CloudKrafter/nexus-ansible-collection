@@ -239,9 +239,14 @@
     group: "{{ nexus_os_group }}"
     mode: "0750"
 
+- name: Configure external postgresql
+  ansible.builtin.include_tasks: enable_external_postgresql_database
+  when: nexus_use_postgres | default(false) | bool
+  tags: nexus-postgres
+
 - name: Enable Pro features
   ansible.builtin.include_tasks: enable_pro_version.yml
-  when: nexus_use_postgres | default(false) | bool or nexus_enable_pro_version | default(false) | bool
+  when: nexus_enable_pro_version | default(false) | bool
   tags: nexus-pro
 
 - name: Setup Nexus data directory

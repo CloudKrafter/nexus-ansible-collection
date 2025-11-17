@@ -26,7 +26,6 @@ nexus_java_version: 17
 nexus_accept_community_eula: false
 
 nexus_ssl_truststore: []
-
 # Enable Pro features
 nexus_enable_pro_version: false
 nexus_migration_type: postgres
@@ -39,7 +38,6 @@ nexus_cluster_enabled: false
 # This is a one-time operation and should be done before starting Nexus
 # If you want to use PostgreSQL as the database for NEW installations, set the following to true
 nexus_use_postgres: false
-
 nexus_postgres_db_hosts:
   - host: localhost
     port: 5432
