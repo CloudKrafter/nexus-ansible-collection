@@ -430,6 +430,7 @@
       - "{{ nexus_data_dir }}"
     excludes:
       - lost+found
+      - log
     recurse: false
     file_type: any
   register: nexus_data_dir_contents
