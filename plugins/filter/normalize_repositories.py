@@ -181,17 +181,17 @@ def normalize_and_clean_repositories_with_explicit_cleanup(
         # Handle None input
         if repo_data is None:
             return []
-        
+
         # Handle single dict input - convert to list
         if isinstance(repo_data, dict):
             repo_data = [repo_data]
-        
+
         # Validate input is a list or tuple
         if not isinstance(repo_data, (list, tuple)):
             raise AnsibleFilterError(
                 'normalize_repositories expected a list, tuple, dict, or None but got {}'.format(type(repo_data).__name__)
             )
-        
+
         normalized_repos = []
         for repo in repo_data:
             # Validate each repo is a dict
@@ -199,7 +199,7 @@ def normalize_and_clean_repositories_with_explicit_cleanup(
                 raise AnsibleFilterError(
                     'Each repository entry must be a dict/mapping but got {}'.format(type(repo).__name__)
                 )
-            
+
             # Normalize the repository
             normalized = merge_defaults(
                 repo, global_defaults, type_defaults, format_defaults, repo_type, repo_format, legacy_field_map
