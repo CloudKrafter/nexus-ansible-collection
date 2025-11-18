@@ -8,7 +8,7 @@
           'proxy',
           'maven',
           legacy_field_map
-        ) }}
+        ),true }}
   tags:
     - maven
     - maven-proxy
@@ -23,7 +23,7 @@
           'hosted',
           'maven',
           legacy_field_map
-        ) }}
+        ),true }}
   tags:
     - maven
     - maven-hosted
@@ -38,7 +38,7 @@
           'group',
           'maven',
           legacy_field_map
-        ) }}
+        ),true }}
   tags: maven
 
 # Need filtered facts for existing repositories because the API has different endpoints for each type and format
