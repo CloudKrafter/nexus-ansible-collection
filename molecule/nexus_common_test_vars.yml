@@ -658,12 +658,6 @@ nexus_privileges:
     domain: some_nexus_domain
     actions:
       - all
-  - name: script1
-    type: script
-    description: first script
-    script_name: setup_capability
-    actions:
-      - all
   - name: script-new-syntax
     type: script
     description: second script

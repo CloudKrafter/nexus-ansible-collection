@@ -1,0 +1,46 @@
+- name: Append id to API payload
+  set_fact:
+    api_payload_create: "{{ api_payload | combine({'notes': 'configured through web api'}) }}"
+  when: "api_payload.type not in __nexus_existing_capabilities__.json | map(attribute='type') | list"
+
+- name: Create capability
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/capabilities"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: POST
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    body: "{{ api_payload_create }}"
+    status_code: 200
+    timeout: "{{ nexus_api_timeout | int }}"
+  when: "api_payload.type not in __nexus_existing_capabilities__.json | map(attribute='type') | list"
+
+- name: Get capability id
+  set_fact:
+    capability_id: >-
+      {{ (__nexus_existing_capabilities__.json
+          | selectattr('type', 'equalto', api_payload.type)
+          | map(attribute='id')
+          | first) | default(None) }}
+  when: api_payload.type in (__nexus_existing_capabilities__.json | map(attribute='type') | list)
+
+- name: Append id to API payload
+  set_fact:
+    api_payload_update: "{{ api_payload | combine({'id': capability_id}) }}"
+  when: api_payload.type in (__nexus_existing_capabilities__.json | map(attribute='type') | list)
+
+- name: Update capability when capability exists
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/capabilities/{{ capability_id }}"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: PUT
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    body: "{{ api_payload_update }}"
+    status_code: 204
+    timeout: "{{ nexus_api_timeout | int }}"
+  when: "api_payload.type  in __nexus_existing_capabilities__.json | map(attribute='type') | list"
