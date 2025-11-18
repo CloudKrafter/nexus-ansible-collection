@@ -239,7 +239,7 @@ class TestNormalizeRepositoriesFilter:
         """Test that the filter is properly registered"""
         filter_module = FilterModule()
         filters = filter_module.filters()
-        
+
         assert "normalize_repositories" in filters
         assert callable(filters["normalize_repositories"])
         assert filters["normalize_repositories"] == normalize_and_clean_repositories_with_explicit_cleanup
