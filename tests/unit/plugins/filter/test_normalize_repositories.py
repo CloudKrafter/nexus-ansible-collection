@@ -31,7 +31,7 @@ class TestNormalizeRepositoriesFilter:
                 "blobStoreName": "default"
             }
         }
-        
+
         self.type_defaults = {
             "proxy": {
                 "httpClient": {
@@ -41,7 +41,7 @@ class TestNormalizeRepositoriesFilter:
             "hosted": {},
             "group": {}
         }
-        
+
         self.format_defaults = {
             "maven": {
                 "maven": {
@@ -50,7 +50,7 @@ class TestNormalizeRepositoriesFilter:
                 }
             }
         }
-        
+
         self.legacy_field_map = {
             "write_policy": "storage.writePolicy",
             "blob_store": "storage.blobStoreName"
@@ -60,15 +60,15 @@ class TestNormalizeRepositoriesFilter:
         """Test that get_nested_value doesn't shadow the 'default' filter"""
         # This test ensures the parameter is named 'default_value' not 'default'
         data = {"level1": {"level2": {"level3": "value"}}}
-        
+
         # Test retrieval with default_value parameter
         result = get_nested_value(data, "level1.level2.level3", default_value="fallback")
         assert result == "value"
-        
+
         # Test missing key with default_value
         result = get_nested_value(data, "level1.missing.key", default_value="fallback")
         assert result == "fallback"
-        
+
         # Test with None as default_value
         result = get_nested_value(data, "missing.path", default_value=None)
         assert result is None
@@ -83,7 +83,7 @@ class TestNormalizeRepositoriesFilter:
             "remoteUrl": "https://repo1.maven.org/maven2/",
             "online": True
         }
-        
+
         result = normalize_and_clean_repositories_with_explicit_cleanup(
             [maven_central_repo],
             self.global_defaults,
@@ -93,7 +93,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0]["name"] == "maven-central"
@@ -110,7 +110,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert result == []
 
     def test_normalize_repositories_with_single_dict(self):
@@ -120,7 +120,7 @@ class TestNormalizeRepositoriesFilter:
             "format": "maven2",
             "type": "hosted"
         }
-        
+
         result = normalize_and_clean_repositories_with_explicit_cleanup(
             single_repo,
             self.global_defaults,
@@ -130,7 +130,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0]["name"] == "test-repo"
@@ -146,7 +146,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert result == []
 
     def test_normalize_repositories_with_multiple_repos(self):
@@ -164,7 +164,7 @@ class TestNormalizeRepositoriesFilter:
                 "type": "hosted"
             }
         ]
-        
+
         result = normalize_and_clean_repositories_with_explicit_cleanup(
             repos,
             self.global_defaults,
@@ -174,7 +174,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0]["name"] == "maven-central"
@@ -215,7 +215,7 @@ class TestNormalizeRepositoriesFilter:
             "blob_store": "custom-blob",  # legacy field
             "write_policy": "ALLOW"  # legacy field
         }
-        
+
         result = normalize_and_clean_repositories_with_explicit_cleanup(
             [repo],
             self.global_defaults,
@@ -225,7 +225,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert isinstance(result, list)
         assert len(result) == 1
         # Legacy fields should be removed after normalization
@@ -258,7 +258,7 @@ class TestNormalizeRepositoriesFilter:
                 }
             }
         }
-        
+
         result = merge_defaults(
             repo,
             self.global_defaults,
@@ -268,7 +268,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert "httpClient" in result
         assert "authentication" in result["httpClient"]
         assert result["httpClient"]["authentication"]["type"] == "username"
@@ -304,7 +304,7 @@ class TestNormalizeRepositoriesFilter:
                 "layoutPolicy": "STRICT"
             }
         }
-        
+
         result = normalize_and_clean_repositories_with_explicit_cleanup(
             [maven_central],
             self.global_defaults,
@@ -314,7 +314,7 @@ class TestNormalizeRepositoriesFilter:
             "maven",
             self.legacy_field_map
         )
-        
+
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0]["name"] == "maven-central"
