@@ -12,6 +12,7 @@ platforms:
   - name: nexus3-oss-rockylinux9
     hostname: nexus3-oss-rockylinux9
     image: brianveltman/molecule_openjdk17:rockylinux9
+    platform: linux/amd64
     pull: true
     pre_build_image: true
     privileged: true
@@ -30,6 +31,7 @@ platforms:
   - name: slapd-server-mock
     hostname: slapd-server-mock
     image: thoteam/slapd-server-mock:latest
+    platform: linux/amd64
     override_command: false
     pull: true
     pre_build_image: true
