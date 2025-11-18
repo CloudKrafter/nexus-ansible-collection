@@ -32,32 +32,36 @@
     var: nxs_delete_blobstores | length
   tags: blobstores
 
-- name: Create configured Blobstores using Nexus API
-  ansible.builtin.include_tasks: blobstores-api.yml
-  vars:
-    nexus_blobstores: "{{ item | default([]) }}"
-    method: POST
-  with_items:
-    - "{{ nxs_create_blobstores | default([]) }}"
-  when: nxs_create_blobstores | length > 0
-  tags: blobstores
+- name: Apply Blobstores changes
+  block:
+    - name: Create configured Blobstores using Nexus API
+      ansible.builtin.include_tasks: blobstores-api.yml
+      vars:
+        nexus_blobstores: "{{ item | default([]) }}"
+        method: POST
+      with_items:
+        - "{{ nxs_create_blobstores | default([]) }}"
+      when: nxs_create_blobstores | length > 0
+      tags: blobstores
 
-# - name: Update configured Blobstores using Nexus API
-#   ansible.builtin.include_tasks: blobstores-api.yml
-#   vars:
-#     nexus_roles: "{{ item | default([]) }}"
-#     method: PUT
-#   with_items:
-#     - "{{ nxs_update_blobstores | default([]) }}"
-#   when: nxs_update_blobstores | length > 0
-#   tags: blobstores
+    # - name: Update configured Blobstores using Nexus API
+    #   ansible.builtin.include_tasks: blobstores-api.yml
+    #   vars:
+    #     nexus_roles: "{{ item | default([]) }}"
+    #     method: PUT
+    #   with_items:
+    #     - "{{ nxs_update_blobstores | default([]) }}"
+    #   when: nxs_update_blobstores | length > 0
+    #   tags: blobstores
 
-- name: Delete Blobstores using Nexus API
-  ansible.builtin.include_tasks: blobstores-api.yml
-  vars:
-    nexus_blobstores: "{{ item | default([]) }}"
-    method: DELETE
-  with_items:
-    - "{{ nxs_delete_blobstores | default([]) }}"
-  when: nxs_delete_blobstores | length > 0 and nexus_enforce_desired_state | bool
+    - name: Delete Blobstores using Nexus API
+      ansible.builtin.include_tasks: blobstores-api.yml
+      vars:
+        nexus_blobstores: "{{ item | default([]) }}"
+        method: DELETE
+      with_items:
+        - "{{ nxs_delete_blobstores | default([]) }}"
+      when: nxs_delete_blobstores | length > 0 and nexus_enforce_desired_state | bool
+      tags: blobstores
+  when: not nexus_config_dry_run
   tags: blobstores
