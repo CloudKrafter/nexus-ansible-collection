@@ -1,14 +1,14 @@
 - name: Normalize Maven proxy repositories
   ansible.builtin.set_fact:
     nexus_repos_maven_proxy_normalized: >
-      {{ nexus_repos_maven_proxy | cloudkrafter.nexus.normalize_repositories(
+      {{ nexus_repos_maven_proxy | default({}) | cloudkrafter.nexus.normalize_repositories(
           nexus_repos_global_defaults,
           nexus_repos_type_defaults,
           nexus_repos_format_defaults,
           'proxy',
           'maven',
           legacy_field_map
-        ),true }}
+        ) }}
   tags:
     - maven
     - maven-proxy
@@ -16,14 +16,14 @@
 - name: Normalize Maven hosted repositories
   ansible.builtin.set_fact:
     nexus_repos_maven_hosted_normalized: >
-      {{ nexus_repos_maven_hosted | cloudkrafter.nexus.normalize_repositories(
+      {{ nexus_repos_maven_hosted | default({})| cloudkrafter.nexus.normalize_repositories(
           nexus_repos_global_defaults,
           nexus_repos_type_defaults,
           nexus_repos_format_defaults,
           'hosted',
           'maven',
           legacy_field_map
-        ),true }}
+        ) }}
   tags:
     - maven
     - maven-hosted
@@ -31,14 +31,14 @@
 - name: Normalize Maven group repositories
   ansible.builtin.set_fact:
     nexus_repos_maven_group_normalized: >
-      {{ nexus_repos_maven_group | cloudkrafter.nexus.normalize_repositories(
+      {{ nexus_repos_maven_group | default({}) | cloudkrafter.nexus.normalize_repositories(
           nexus_repos_global_defaults,
           nexus_repos_type_defaults,
           nexus_repos_format_defaults,
           'group',
           'maven',
           legacy_field_map
-        ),true }}
+        ) }}
   tags: maven
 
 # Need filtered facts for existing repositories because the API has different endpoints for each type and format
