@@ -1,7 +1,7 @@
 - name: Normalize Maven proxy repositories
   ansible.builtin.set_fact:
     nexus_repos_maven_proxy_normalized: >
-      {{ nexus_repos_maven_proxy | cloudkrafter.nexus.normalize_repositories(
+      {{ nexus_repos_maven_proxy | default({}) | cloudkrafter.nexus.normalize_repositories(
           nexus_repos_global_defaults,
           nexus_repos_type_defaults,
           nexus_repos_format_defaults,
@@ -16,7 +16,7 @@
 - name: Normalize Maven hosted repositories
   ansible.builtin.set_fact:
     nexus_repos_maven_hosted_normalized: >
-      {{ nexus_repos_maven_hosted | cloudkrafter.nexus.normalize_repositories(
+      {{ nexus_repos_maven_hosted | default({})| cloudkrafter.nexus.normalize_repositories(
           nexus_repos_global_defaults,
           nexus_repos_type_defaults,
           nexus_repos_format_defaults,
@@ -31,7 +31,7 @@
 - name: Normalize Maven group repositories
   ansible.builtin.set_fact:
     nexus_repos_maven_group_normalized: >
-      {{ nexus_repos_maven_group | cloudkrafter.nexus.normalize_repositories(
+      {{ nexus_repos_maven_group | default({}) | cloudkrafter.nexus.normalize_repositories(
           nexus_repos_global_defaults,
           nexus_repos_type_defaults,
           nexus_repos_format_defaults,

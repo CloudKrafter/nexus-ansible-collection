@@ -1,4 +1,5 @@
 import copy
+from ansible.errors import AnsibleFilterError
 
 UPPERCASE_FIELDS = [
     "storage.writePolicy",
@@ -21,7 +22,7 @@ def convert_specified_fields_to_uppercase(data, fields_to_uppercase):
             set_nested_value(data, key_path, value.upper())
 
 
-def get_nested_value(data, key_path, default=None):
+def get_nested_value(data, key_path, default_value=None):
     """
     Retrieve a nested value from a dictionary using a dotted key path.
     Returns the default value if any key in the path is missing.
@@ -31,7 +32,7 @@ def get_nested_value(data, key_path, default=None):
         if isinstance(data, dict) and key in data:
             data = data[key]
         else:
-            return default
+            return default_value
     return data
 
 
@@ -176,21 +177,48 @@ def normalize_and_clean_repositories_with_explicit_cleanup(
     """
     Normalize repositories and ensure explicit removal of all legacy attributes.
     """
-    normalized_repos = []
-    for repo in repo_data:
-        # Normalize the repository
-        normalized = merge_defaults(
-            repo, global_defaults, type_defaults, format_defaults, repo_type, repo_format, legacy_field_map
-        )
+    try:
+        # Handle None input
+        if repo_data is None:
+            return []
 
-        # Explicitly clean up all legacy attributes from the normalized repository
-        normalized = enhanced_cleanup_legacy_attributes(
-            normalized, legacy_field_map)
+        # Handle single dict input - convert to list
+        if isinstance(repo_data, dict):
+            repo_data = [repo_data]
 
-        # Append the cleaned, normalized repository to the list
-        normalized_repos.append(normalized)
+        # Validate input is a list or tuple
+        if not isinstance(repo_data, (list, tuple)):
+            raise AnsibleFilterError(
+                'normalize_repositories expected a list, tuple, dict, or None but got {}'.format(type(repo_data).__name__)
+            )
 
-    return normalized_repos
+        normalized_repos = []
+        for repo in repo_data:
+            # Validate each repo is a dict
+            if not isinstance(repo, dict):
+                raise AnsibleFilterError(
+                    'Each repository entry must be a dict/mapping but got {}'.format(type(repo).__name__)
+                )
+
+            # Normalize the repository
+            normalized = merge_defaults(
+                repo, global_defaults, type_defaults, format_defaults, repo_type, repo_format, legacy_field_map
+            )
+
+            # Explicitly clean up all legacy attributes from the normalized repository
+            normalized = enhanced_cleanup_legacy_attributes(
+                normalized, legacy_field_map)
+
+            # Append the cleaned, normalized repository to the list
+            normalized_repos.append(normalized)
+
+        return normalized_repos
+    except AnsibleFilterError:
+        # Re-raise AnsibleFilterError as-is
+        raise
+    except Exception as e:
+        # Wrap any other exception in AnsibleFilterError with context
+        raise AnsibleFilterError('normalize_repositories failed: {}'.format(str(e)))
 
 
 class FilterModule:
