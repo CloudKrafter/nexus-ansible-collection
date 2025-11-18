@@ -470,7 +470,7 @@
 - name: Configure Default Role capability
   ansible.builtin.include_role:
     name: cloudkrafter.nexus.config_api
-    tasks_from: create_capability.ymll
+    tasks_from: create_capability.yml
   vars:
     api_payload:
       type: defaultrole
