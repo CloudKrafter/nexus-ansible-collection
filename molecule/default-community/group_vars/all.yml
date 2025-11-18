@@ -1630,59 +1630,59 @@ nexus_repos_maven_hosted:
         - maven_releases_cleanup
         - maven_cleanup
 
-nexus_repos_maven_proxy:
-  - name: maven-central
-    proxy:
-      remoteUrl: https://repo1.maven.org/maven2/
-      contentMaxAge: -1
-      metadataMaxAge: 1440
-    negativeCache:
-      enabled: true
-      timeToLive: 1440
-    httpClient:
-      blocked: false
-      autoBlock: true
-      connection:
-        useTrustStore: true
-  - name: maven-proxy-2
-    proxy:
-      remoteUrl: https://repo1.maven.org/maven2/
-      contentMaxAge: -1
-      metadataMaxAge: 1440
-    routingRule: routing-rule-allow-all
-  - name: maven-proxy-3
-    proxy:
-      remoteUrl: https://repo1.maven.org/maven2/
-      contentMaxAge: -1
-      metadataMaxAge: 1440
-    negativeCache:
-      enabled: true
-      timeToLive: 1440
-    httpClient:
-      blocked: false
-      autoBlock: true
+# nexus_repos_maven_proxy:
+#   - name: maven-central
+#     proxy:
+#       remoteUrl: https://repo1.maven.org/maven2/
+#       contentMaxAge: -1
+#       metadataMaxAge: 1440
+#     negativeCache:
+#       enabled: true
+#       timeToLive: 1440
+#     httpClient:
+#       blocked: false
+#       autoBlock: true
+#       connection:
+#         useTrustStore: true
+#   - name: maven-proxy-2
+#     proxy:
+#       remoteUrl: https://repo1.maven.org/maven2/
+#       contentMaxAge: -1
+#       metadataMaxAge: 1440
+#     routingRule: routing-rule-allow-all
+#   - name: maven-proxy-3
+#     proxy:
+#       remoteUrl: https://repo1.maven.org/maven2/
+#       contentMaxAge: -1
+#       metadataMaxAge: 1440
+#     negativeCache:
+#       enabled: true
+#       timeToLive: 1440
+#     httpClient:
+#       blocked: false
+#       autoBlock: true
 
-nexus_repos_maven_group:
-  - name: maven-group
-    online: true
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-    group:
-      memberNames:
-        - maven-central
-        - maven-proxy-2
-        - maven-proxy-3
-  - name: maven-group-reverse-group-order
-    online: false
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: false
-    group:
-      memberNames:
-        - maven-proxy-3
-        - maven-proxy-2
-        - maven-central
+# nexus_repos_maven_group:
+#   - name: maven-group
+#     online: true
+#     storage:
+#       blobStoreName: default
+#       strictContentTypeValidation: true
+#     group:
+#       memberNames:
+#         - maven-central
+#         - maven-proxy-2
+#         - maven-proxy-3
+#   - name: maven-group-reverse-group-order
+#     online: false
+#     storage:
+#       blobStoreName: default
+#       strictContentTypeValidation: false
+#     group:
+#       memberNames:
+#         - maven-proxy-3
+#         - maven-proxy-2
+#         - maven-central
 
 nexus_repos_routing_rules:
   - name: routing-rule-block-nmap
