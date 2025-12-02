@@ -25,7 +25,7 @@
 - name: Compare routing rules for changes
   ansible.builtin.set_fact:
     nxs_update_routingrules: "{{ nxs_update_routingrules + [item] }}"
-  loop: "{{ nexus_repos_routing_rules | list }}"
+  loop: "{{ nexus_repos_routing_rules | rejectattr('name', 'in', nxs_create_routingrules | map(attribute='name') | list) | list }}"
   when: >
     ( __nxs_crnt_rtng_rls__.json | selectattr('name', 'equalto', item.name) | first) is not defined or
     ( __nxs_crnt_rtng_rls__.json | selectattr('name', 'equalto', item.name) | first).description | default(omit) != item.description | default(omit) or
@@ -62,7 +62,7 @@
         rules: "{{ item | default([]) }}"
         method: POST
       with_items:
-        - "{{ nexus_repos_routing_rules | default([]) }}"
+        - "{{ nxs_create_routingrules | default([]) }}"
       when: nxs_create_routingrules | length > 0
       tags: routing-rules
 
