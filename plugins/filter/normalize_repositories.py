@@ -85,14 +85,30 @@ def merge_defaults(repo, global_defaults, type_defaults, format_defaults, repo_t
         # Step 4: Normalize legacy attributes
         for legacy_key, normalized_key in legacy_field_map.items():
             # Handle dynamic mappings for fields like `content_disposition` and `remove_quarantined`
-            if legacy_key in ["content_disposition", "remove_quarantined", "passphrase", "keypair"] and isinstance(normalized_key, dict):
-                # Check if the format and type exist in the mapping
-                if repo_format in normalized_key and repo_type in normalized_key[repo_format]:
+            if legacy_key in ["content_disposition", "remove_quarantined", "passphrase", "keypair"] \
+                    and isinstance(normalized_key, dict):
+
+                # Strict validation: require format → type → string path
+                if (
+                    repo_format in normalized_key
+                    and isinstance(normalized_key[repo_format], dict)
+                    and repo_type in normalized_key[repo_format]
+                ):
                     target_field = normalized_key[repo_format][repo_type]
                 else:
-                    continue  # Skip if no valid mapping exists for this repo
+                    # Skip unresolvable legacy mappings silently
+                    continue
+
             else:
+                # For all other keys, normalized_key must be a string
                 target_field = normalized_key
+
+            # Final safety check: the resolved target_field must be a string dotted path
+            if not isinstance(target_field, str):
+                raise ValueError(
+                    f"Invalid target field for legacy key '{legacy_key}'. "
+                    f"Expected string path, got {type(target_field)}: {target_field!r}"
+                )
 
             value = get_nested_value(repo, legacy_key)
             if value is not None:
