@@ -200,7 +200,7 @@ class FilterModule:
         Registers the 'normalize_repositories' filter for use in playbooks.
         """
         return {
-            "normalize_repositories": normalize_and_clean_repositories_with_explicit_cleanup
+            "normalize_repositories": self.normalize_repositories_filter
         }
     
     def normalize_repositories_filter(
