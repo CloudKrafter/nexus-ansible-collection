@@ -202,3 +202,52 @@ class FilterModule:
         return {
             "normalize_repositories": normalize_and_clean_repositories_with_explicit_cleanup
         }
+    
+    def normalize_repositories_filter(
+        self,
+        repo_data,
+        global_defaults=None,
+        type_defaults=None,
+        format_defaults=None,
+        repo_type=None,
+        repo_format=None,
+        legacy_field_map=None,
+    ):
+        """
+        Wrapper that makes the underlying function compatible with how
+        Ansible/Jinja2 passes filter arguments.
+        """
+
+        # Fail early with helpful messages instead of crashing inside the filter
+        if global_defaults is None:
+            raise AnsibleFilterError(
+                "normalize_repositories: missing required argument 'global_defaults'"
+            )
+
+        if type_defaults is None:
+            raise AnsibleFilterError(
+                "normalize_repositories: missing required argument 'type_defaults'"
+            )
+
+        if format_defaults is None:
+            raise AnsibleFilterError(
+                "normalize_repositories: missing required argument 'format_defaults'"
+            )
+
+        if repo_type is None or repo_format is None:
+            raise AnsibleFilterError(
+                "normalize_repositories: repo_type and repo_format are required"
+            )
+
+        if legacy_field_map is None:
+            legacy_field_map = {}
+
+        return normalize_and_clean_repositories_with_explicit_cleanup(
+            repo_data,
+            global_defaults,
+            type_defaults,
+            format_defaults,
+            repo_type,
+            repo_format,
+            legacy_field_map
+        )
