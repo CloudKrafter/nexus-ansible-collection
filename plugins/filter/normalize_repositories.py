@@ -85,30 +85,14 @@ def merge_defaults(repo, global_defaults, type_defaults, format_defaults, repo_t
         # Step 4: Normalize legacy attributes
         for legacy_key, normalized_key in legacy_field_map.items():
             # Handle dynamic mappings for fields like `content_disposition` and `remove_quarantined`
-            if legacy_key in ["content_disposition", "remove_quarantined", "passphrase", "keypair"] \
-                    and isinstance(normalized_key, dict):
-
-                # Strict validation: require format → type → string path
-                if (
-                    repo_format in normalized_key
-                    and isinstance(normalized_key[repo_format], dict)
-                    and repo_type in normalized_key[repo_format]
-                ):
+            if legacy_key in ["content_disposition", "remove_quarantined", "passphrase", "keypair"] and isinstance(normalized_key, dict):
+                # Check if the format and type exist in the mapping
+                if repo_format in normalized_key and repo_type in normalized_key[repo_format]:
                     target_field = normalized_key[repo_format][repo_type]
                 else:
-                    # Skip unresolvable legacy mappings silently
-                    continue
-
+                    continue  # Skip if no valid mapping exists for this repo
             else:
-                # For all other keys, normalized_key must be a string
                 target_field = normalized_key
-
-            # Final safety check: the resolved target_field must be a string dotted path
-            if not isinstance(target_field, str):
-                raise ValueError(
-                    f"Invalid target field for legacy key '{legacy_key}'. "
-                    f"Expected string path, got {type(target_field)}: {target_field!r}"
-                )
 
             value = get_nested_value(repo, legacy_key)
             if value is not None:
@@ -216,54 +200,5 @@ class FilterModule:
         Registers the 'normalize_repositories' filter for use in playbooks.
         """
         return {
-            "normalize_repositories": self.normalize_repositories_filter
+            "normalize_repositories": normalize_and_clean_repositories_with_explicit_cleanup
         }
-    
-    def normalize_repositories_filter(
-        self,
-        repo_data,
-        global_defaults=None,
-        type_defaults=None,
-        format_defaults=None,
-        repo_type=None,
-        repo_format=None,
-        legacy_field_map=None,
-    ):
-        """
-        Wrapper that makes the underlying function compatible with how
-        Ansible/Jinja2 passes filter arguments.
-        """
-
-        # Fail early with helpful messages instead of crashing inside the filter
-        if global_defaults is None:
-            raise AnsibleFilterError(
-                "normalize_repositories: missing required argument 'global_defaults'"
-            )
-
-        if type_defaults is None:
-            raise AnsibleFilterError(
-                "normalize_repositories: missing required argument 'type_defaults'"
-            )
-
-        if format_defaults is None:
-            raise AnsibleFilterError(
-                "normalize_repositories: missing required argument 'format_defaults'"
-            )
-
-        if repo_type is None or repo_format is None:
-            raise AnsibleFilterError(
-                "normalize_repositories: repo_type and repo_format are required"
-            )
-
-        if legacy_field_map is None:
-            legacy_field_map = {}
-
-        return normalize_and_clean_repositories_with_explicit_cleanup(
-            repo_data,
-            global_defaults,
-            type_defaults,
-            format_defaults,
-            repo_type,
-            repo_format,
-            legacy_field_map
-        )
