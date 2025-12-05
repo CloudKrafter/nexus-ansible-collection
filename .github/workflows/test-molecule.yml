@@ -42,14 +42,14 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.13'
           cache: 'pip'
 
       - name: Install test dependencies.
         run: pip3 install ansible molecule molecule-plugins[docker] docker jmespath
 
       - name: Run Molecule tests.
-        run: molecule test -s ${{ matrix.distro }} -- -vv
+        run: molecule test -s ${{ matrix.distro }} -- -vvv
         env:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
