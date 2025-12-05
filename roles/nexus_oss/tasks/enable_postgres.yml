@@ -18,15 +18,6 @@
     mode: "0750"
   tags: nexus-postgres,nexus-migrate
 
-- name: Create {{ nexus_data_dir }}/etc/fabric/nexus-store.properties file
-  ansible.builtin.file:
-    state: touch
-    dest: "{{ nexus_data_dir }}/etc/fabric/nexus-store.properties"
-    owner: "{{ nexus_os_user }}"
-    group: "{{ nexus_os_group }}"
-    mode: "0640"
-  tags: nexus-postgres,nexus-migrate
-
 - name: Get primary group and its hosts
   ansible.builtin.set_fact:
     nexus_group: "{{ inventory_hostname | cloudkrafter.nexus.direct_parent(groups) }}"
@@ -56,19 +47,16 @@
       will use {{ _nxrm_selected_db_.host }}
   tags: nexus-postgres,nexus-migrate
 
-- name: Add the username and password to the nexus-store.properties file
-  ansible.builtin.lineinfile:
-    path: "{{ nexus_data_dir }}/etc/fabric/nexus-store.properties"
-    line: "{{ item }}"
-    insertafter: "EOF"
-    state: present
-  loop:
-    - username={{ _nxrm_selected_db_.username }}
-    - password={{ _nxrm_selected_db_.password }}
-    - jdbcUrl=jdbc\:postgresql\://{{ _nxrm_selected_db_.host }}\:{{ _nxrm_selected_db_.port }}/{{ _nxrm_selected_db_.name }}
-    - maximumPoolSize={{ nexus_postgres_max_pool_size }}
-    - advanced=maxLifetime\={{ nexus_postgres_max_lifetime }}
+- name: Generate nexus-store.properties from template
+  ansible.builtin.template:
+    src: nexus-store.properties.j2
+    dest: "{{ nexus_data_dir }}/etc/fabric/nexus-store.properties"
+    backup: true
+    owner: "{{ nexus_os_user }}"
+    group: "{{ nexus_os_group }}"
+    mode: "0640"
   tags: nexus-postgres,nexus-migrate
+  notify: nexus-service-restart
 
 - name: Start Nexus service
   ansible.builtin.systemd:

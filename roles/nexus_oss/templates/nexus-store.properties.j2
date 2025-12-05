@@ -1,0 +1,6 @@
+# Database configuration
+username={{ _nxrm_selected_db_.username }}
+password={{ _nxrm_selected_db_.password }}
+jdbcUrl=jdbc:postgresql://{{ _nxrm_selected_db_.host }}:{{ _nxrm_selected_db_.port }}/{{ _nxrm_selected_db_.name }}
+maximumPoolSize={{ nexus_postgres_max_pool_size }}
+advanced=maxLifetime={{ nexus_postgres_max_lifetime }}
