@@ -6,7 +6,7 @@ dependency:
     collections-file: ../ansible-requirements.yml
 
 driver:
-  name: docker
+  name: ${MOLECULE_DRIVER:-docker}
 
 platforms:
   - name: slapd-server-mock-pro
