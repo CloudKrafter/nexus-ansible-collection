@@ -32,7 +32,7 @@
   when: nexus_version | length > 0
 
 - name: Download Nexus package and process
-  when: nexus_version_running != nexus_version or nexus_force_download
+  when: nexus_version_running | default('0.0.0') != nexus_version or nexus_force_download
   block:
     - name: Download Nexus package
       cloudkrafter.nexus.download:
