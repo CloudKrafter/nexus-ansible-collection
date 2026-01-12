@@ -6,7 +6,7 @@ dependency:
     collections-file: ../ansible-requirements.yml
 
 driver:
-  name: podman
+  name: ${MOLECULE_DRIVER:-docker}
 
 platforms:
   - name: nexus3-oss

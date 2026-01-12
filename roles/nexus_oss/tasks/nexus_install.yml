@@ -31,22 +31,25 @@
     nexus_version_detected_from: fixed
   when: nexus_version | length > 0
 
-- name: Download Nexus package
-  cloudkrafter.nexus.download:
-    state: "{{ 'present' if nexus_version | length > 0 else 'latest' }}"
-    version: "{{ nexus_version | default(omit) }}"
-    dest: "{{ nexus_download_dir }}"
-    url: "{{ nexus_download_url | default(omit) }}"
-    timeout: "{{ nexus_download_timeout }}"
-    validate_certs: "{{ nexus_download_ssl_verify | default(omit) }}"
-  environment: "{{ nexus_proxy_env_vars | default(omit) }}"
-  register: __nexus_download__
+- name: Download Nexus package and process
+  when: nexus_version_running | default('0.0.0') != nexus_version or nexus_force_download
+  block:
+    - name: Download Nexus package
+      cloudkrafter.nexus.download:
+        state: "{{ 'present' if nexus_version | length > 0 else 'latest' }}"
+        version: "{{ nexus_version | default(omit) }}"
+        dest: "{{ nexus_download_dir }}"
+        url: "{{ nexus_download_url | default(omit) }}"
+        timeout: "{{ nexus_download_timeout }}"
+        validate_certs: "{{ nexus_download_ssl_verify | default(omit) }}"
+      environment: "{{ nexus_proxy_env_vars | default(omit) }}"
+      register: __nexus_download__
 
-- name: Register nexus_version from latest nexus download
-  ansible.builtin.set_fact:
-    nexus_version: "{{ __nexus_download__.version }}"
-    nexus_version_detected_from: latest
-  when: nexus_version | length == 0
+    - name: Register nexus_version from latest nexus download
+      ansible.builtin.set_fact:
+        nexus_version: "{{ __nexus_download__.version }}"
+        nexus_version_detected_from: latest
+      when: nexus_version | length == 0
 
 - name: Register nexus_version from currently installed
   ansible.builtin.set_fact:
@@ -134,6 +137,7 @@
     mode: "0755"
   notify:
     - nexus-service-stop
+  when: __nexus_download__.destination is defined
 
 - name: Ensure proper ownership of nexus installation directory
   ansible.builtin.file:
