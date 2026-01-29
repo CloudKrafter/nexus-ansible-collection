@@ -4,6 +4,7 @@
     url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}"
     username: "{{ nexus_admin_username }}"
     password: "{{ nexus_admin_password }}"
+    validate_certs: "{{ nexus_api_validate_certs }}"
   register: nxrm_instance
   tags: always
 
