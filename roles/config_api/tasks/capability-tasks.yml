@@ -1,0 +1,75 @@
+- name: Set facts for deprecated features
+  ansible.builtin.set_fact:
+    nexus_log4j_supported: "{{ nexus_version is version('3.77.2-02', '<=') }}"
+
+- name: Get all existing capabilities
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/capabilities"
+    user: "{{ nexus_admin_username }}"
+    password: "{{ nexus_admin_password }}"
+    method: GET
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    return_content: yes
+    status_code: 200
+  register: __nexus_existing_capabilities__
+
+- name: Configure RUT Auth header
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
+  vars:
+    api_payload:
+      type: rutauth
+      enabled: true
+      properties:
+        httpHeader: "{{ nexus_rut_auth_header }}"
+  when: nexus_rut_auth_header is defined
+
+- name: Configure branding capability
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
+  vars:
+    api_payload:
+      type: rapture.branding
+      enabled: "{{ (nexus_branding_footer | length > 0) and (nexus_branding_header | length > 0) }}"
+      properties:
+        footerHtml: "{{ nexus_branding_footer }}"
+        headerHtml: "{{ nexus_branding_header }}"
+        footerEnabled: "{{ nexus_branding_footer | length > 0 }}"
+        headerEnabled: "{{ nexus_branding_header | length > 0 }}"
+
+- name: Configure audit capability
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
+  vars:
+    api_payload:
+      type: audit
+      enabled: "{{ nexus_audit_enabled | bool }}"
+      properties: {}
+
+- name: Configure log4j-visualizer capability
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
+  vars:
+    api_payload:
+      type: log4j-visualizer
+      enabled: "{{ nexus_log4j_visualizer_enabled | bool }}"
+      properties: {}
+  when: nexus_log4j_supported
+
+- name: Configure Default Role capability
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
+  vars:
+    api_payload:
+      type: defaultrole
+      enabled: "{{ (nexus_default_role | length > 0) }}"
+      properties:
+        role: "{{ nexus_default_role }}"
+  when: "{{ (nexus_default_role | length > 0) }}"

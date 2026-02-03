@@ -104,6 +104,7 @@
     nexus_log4j_supported: "{{ nexus_version is version('3.77.2-02', '<=') }}"
     nexus_bower_supported: "{{ nexus_version is version('3.77.2-02', '<=') }}"
     nexus_eula_supported: "{{ nexus_version is version('3.78.0-14', '>=') }}"
+    
 - name: Ensure Nexus o/s group exists
   ansible.builtin.group:
     name: "{{ nexus_os_group }}"

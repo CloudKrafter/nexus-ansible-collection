@@ -77,3 +77,8 @@
 - name: Include users-tasks
   ansible.builtin.include_tasks: users-tasks.yml
   tags: users
+
+- name: Include capability-tasks
+  ansible.builtin.include_tasks: capability-tasks.yml
+  tags: capabilities
+

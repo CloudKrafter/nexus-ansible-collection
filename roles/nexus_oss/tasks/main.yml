@@ -383,16 +383,32 @@
     name: cloudkrafter.nexus.config_api
     tasks_from: security-realms-api.yml
 
+- name: Get all existing capabilities
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/capabilities"
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    method: GET
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    body_format: json
+    return_content: yes
+    status_code: 200
+  register: __nexus_existing_capabilities__
+
 - name: Configure RUT Auth header
-  ansible.builtin.include_tasks: call_script.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
-    script_name: setup_capability
-    call_args:
-      capability_typeId: rutauth
-      capability_enabled: true
-      capability_properties:
+    api_payload:
+      type: rutauth
+      enabled: true
+      properties:
         httpHeader: "{{ nexus_rut_auth_header }}"
-  when: nexus_rut_auth_header is defined
+  when: 
+    - nexus_rut_auth_header is defined
+    - nexus_run_provisionning | default(true) | bool
 
 - name: Configure mail server
   ansible.builtin.uri:
@@ -419,46 +435,57 @@
     status_code: 200,204
 
 - name: Configure branding capability
-  ansible.builtin.include_tasks: call_script.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
-    script_name: setup_capability
-    call_args:
-      capability_typeId: rapture.branding
-      capability_enabled: "{{ (nexus_branding_footer | length > 0) and (nexus_branding_header | length > 0) }}"
-      capability_properties:
+    api_payload:
+      type: rapture.branding
+      enabled: "{{ (nexus_branding_footer | length > 0) and (nexus_branding_header | length > 0) }}"
+      properties:
         footerHtml: "{{ nexus_branding_footer }}"
         headerHtml: "{{ nexus_branding_header }}"
         footerEnabled: "{{ nexus_branding_footer | length > 0 }}"
         headerEnabled: "{{ nexus_branding_header | length > 0 }}"
+  when: nexus_run_provisionning | default(true) | bool
 
 - name: Configure audit capability
-  ansible.builtin.include_tasks: call_script.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
-    script_name: setup_capability
-    call_args:
-      capability_typeId: audit
-      capability_enabled: "{{ nexus_audit_enabled | bool }}"
-      capability_properties: {}
+    api_payload:
+      type: audit
+      enabled: "{{ nexus_audit_enabled | bool }}"
+      properties: {}
+  when: nexus_run_provisionning | default(true) | bool
 
 - name: Configure log4j-visualizer capability
-  ansible.builtin.include_tasks: call_script.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
-    script_name: setup_capability
-    call_args:
-      capability_typeId: log4j-visualizer
-      capability_enabled: "{{ nexus_log4j_visualizer_enabled | bool }}"
-      capability_properties: {}
-  when: nexus_log4j_supported
+    api_payload:
+      type: log4j-visualizer
+      enabled: "{{ nexus_log4j_visualizer_enabled | bool }}"
+      properties: {}
+  when: 
+    - nexus_log4j_supported
+    - nexus_run_provisionning | default(true) | bool
 
 - name: Configure Default Role capability
-  ansible.builtin.include_tasks: call_script.yml
+  ansible.builtin.include_role:
+    name: cloudkrafter.nexus.config_api
+    tasks_from: create_capability.yml
   vars:
-    script_name: setup_capability
-    call_args:
-      capability_typeId: defaultrole
-      capability_enabled: "{{ (nexus_default_role | length > 0) }}"
-      capability_properties:
+    api_payload:
+      type: defaultrole
+      enabled: "{{ (nexus_default_role | length > 0) }}"
+      properties:
         role: "{{ nexus_default_role }}"
+  when: 
+    - "{{ (nexus_default_role | length > 0) }}"
+    - nexus_run_provisionning | default(true) | bool
 
 - name: Define backup task if backup is configured
   ansible.builtin.set_fact:
