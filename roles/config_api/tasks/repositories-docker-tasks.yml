@@ -82,6 +82,7 @@
     (__nxs_crnt_docker_hstd__ | selectattr('name', 'equalto', item.name) | first).component.proprietaryComponents | default(false) != item.component.proprietaryComponents | default(false) or
     (__nxs_crnt_docker_hstd__ | selectattr('name', 'equalto', item.name) | first).docker.v1Enabled | default(false) != item.docker.v1Enabled | default(false) or
     (__nxs_crnt_docker_hstd__ | selectattr('name', 'equalto', item.name) | first).docker.forceBasicAuth | default(false) != item.docker.forceBasicAuth | default(false) or
+    (__nxs_crnt_docker_hstd__ | selectattr('name', 'equalto', item.name) | first).docker.pathEnabled | default(false) != item.docker.pathEnabled | default(false) or
     (__nxs_crnt_docker_hstd__ | selectattr('name', 'equalto', item.name) | first).docker.httpPort | default(omit) != item.docker.httpPort | default(None) or
     (__nxs_crnt_docker_hstd__ | selectattr('name', 'equalto', item.name) | first).docker.httpsPort | default(omit) != item.docker.httpsPort | default(None) or
     (__nxs_crnt_docker_hstd__ | selectattr('name', 'equalto', item.name) | first).docker.subdomain | default(omit) | lower != item.docker.subdomain | default(None) | lower
@@ -135,6 +136,7 @@
     ) or
     (__nxs_crnt_docker_prxy__ | selectattr('name', 'equalto', item.name) | first).docker.v1Enabled | default(false) != item.docker.v1Enabled | default(false) or
     (__nxs_crnt_docker_prxy__ | selectattr('name', 'equalto', item.name) | first).docker.forceBasicAuth | default(false) != item.docker.forceBasicAuth | default(false) or
+    (__nxs_crnt_docker_prxy__ | selectattr('name', 'equalto', item.name) | first).docker.pathEnabled | default(false) != item.docker.pathEnabled | default(false) or
     (__nxs_crnt_docker_prxy__ | selectattr('name', 'equalto', item.name) | first).docker.httpPort | default(omit) != item.docker.httpPort | default(None) or
     (__nxs_crnt_docker_prxy__ | selectattr('name', 'equalto', item.name) | first).docker.httpsPort | default(omit) != item.docker.httpsPort | default(None) or
     (__nxs_crnt_docker_prxy__ | selectattr('name', 'equalto', item.name) | first).docker.subdomain | default(omit) | lower != item.docker.subdomain | default(None) | lower or
@@ -162,6 +164,7 @@
     (__nxs_crnt_docker_grp__ | selectattr('name', 'equalto', item.name) | first).group.writableMember | default(omit) != item.group.writableMember | default(omit) or
     (__nxs_crnt_docker_grp__ | selectattr('name', 'equalto', item.name) | first).docker.v1Enabled | default(false) != item.docker.v1Enabled | default(false) or
     (__nxs_crnt_docker_grp__ | selectattr('name', 'equalto', item.name) | first).docker.forceBasicAuth | default(false) != item.docker.forceBasicAuth | default(false) or
+    (__nxs_crnt_docker_grp__ | selectattr('name', 'equalto', item.name) | first).docker.pathEnabled | default(false) != item.docker.pathEnabled | default(false) or
     (__nxs_crnt_docker_grp__ | selectattr('name', 'equalto', item.name) | first).docker.httpPort | default(omit) != item.docker.httpPort | default(None) or
     (__nxs_crnt_docker_grp__ | selectattr('name', 'equalto', item.name) | first).docker.httpsPort | default(omit) != item.docker.httpsPort | default(None) or
     (__nxs_crnt_docker_grp__ | selectattr('name', 'equalto', item.name) | first).docker.subdomain | default(omit) | lower != item.docker.subdomain | default(None) | lower
