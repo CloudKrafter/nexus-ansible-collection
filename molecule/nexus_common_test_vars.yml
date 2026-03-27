@@ -369,6 +369,8 @@ nexus_repos_docker_hosted:
   - name: docker-private-no-redeploy
     write_policy: deny # will be effective when allow_redeploy_latest is false
     allow_redeploy_latest: false
+  - name: docker-private-pbr
+    path_enabled: true
 
 nexus_repos_docker_proxy:
   - name: docker-hub

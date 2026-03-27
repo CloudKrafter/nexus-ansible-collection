@@ -276,7 +276,7 @@ nexus_repos_format_defaults:
       blobStoreName: "{{ nexus_blob_names.docker.blob | default('default') }}"
     docker:
       forceBasicAuth: true
-      pathEnabled: true
+      pathEnabled: false  # This is the current default of the role, Nexus prefers this enabled since 3.83.0
       v1Enabled: false
     dockerProxy:
       indexType: HUB
