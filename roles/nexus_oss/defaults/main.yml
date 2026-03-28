@@ -379,6 +379,7 @@ nexus_repos_raw_group: []
 _nexus_repos_docker_defaults:
   blob_store: "{{ nexus_blob_names.docker.blob }}"
   force_basic_auth: true
+  path_enabled: false  # This is the current default of the role, Nexus prefers this since 3.83.0
   strict_content_validation: true
   version_policy: release # release, snapshot or mixed
   layout_policy: strict # strict or permissive

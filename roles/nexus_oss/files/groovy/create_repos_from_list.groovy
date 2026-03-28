@@ -201,6 +201,7 @@ parsed_args.each { currentRepo ->
             dockerPort = !(dockerPort instanceof String) ? dockerPort as String : dockerPort
             configuration.attributes['docker'] = [
                     forceBasicAuth: currentRepo.force_basic_auth,
+                    pathEnabled: currentRepo.path_enabled,
                     v1Enabled     : currentRepo.v1_enabled,
                     httpPort      : dockerPort?.isInteger() ? dockerPort.toInteger() : null,
                     subdomain     : currentRepo.sub_domain ? currentRepo.sub_domain : null
