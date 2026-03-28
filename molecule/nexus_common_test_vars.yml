@@ -89,12 +89,12 @@ nexus_repos_routing_rules:
       - ".*"
 
 nexus_repos_cleanup_policies:
-  # - name: all_cleanup
-  #   format: all
-  #   notes: "All"
-  #   criteria:
-  #     lastBlobUpdated: 60
-  #     lastDownloaded: 120
+  - name: all_cleanup
+    format: all
+    notes: "All"
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 120
   - name: mvn_cleanup
     format: maven2
     notes: "mvn"
@@ -744,7 +744,7 @@ nexus_local_users:
     first_name: Anonymous
     last_name: User
     email: anonymous@example.org
-    password: s3cr3t
+    password: s3cr3t_password
     roles:
       - nx-anonymous
   - username: admin
@@ -758,21 +758,21 @@ nexus_local_users:
     first_name: Jenkins
     last_name: CI
     email: support@company.com
-    password: s3cr3t
+    password: s3cr3t_password
     roles:
       - developers
   - username: test_roles
     first_name: Test
     last_name: Roles
     email: test@roles.com
-    password: s3cr3t
+    password: s3cr3t_password
     roles:
       - c-ro-private_yum_centos_7
   - username: team1
     first_name: team
     last_name: one
     email: team@one.com
-    password: theone
+    password: theone2rule
     roles:
       - developers
       - role-team1
@@ -780,7 +780,7 @@ nexus_local_users:
     first_name: team
     last_name: two
     email: team@two.com
-    password: thetwo
+    password: thetwo1repo
     roles:
       - developers
       - role-team2
